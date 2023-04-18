@@ -17,12 +17,17 @@ import Relude
       IO,
       ToString(toString) )
 
+-- | 'fetchPage' takes a URL as input and fetches the content of the web page. It returns the content as a 'ByteString'.
 fetchPage :: Text -> IO ByteString
 fetchPage url = do
     req <- parseRequest (toString url)
     res <- httpBS req
     return $ getResponseBody res
 
+
+-- | 'extractLinks' takes the HTML content of a web page as a ByteString and
+-- extracts all the links found within <a> tags.
+-- It returns a list of URLs as Text values.    
 extractLinks :: ByteString -> [Text]
 extractLinks html = [
     T.decodeUtf8 link | TagOpen "a"
