@@ -87,6 +87,10 @@ common shared
     , shower
     , time
     , with-utf8
+    , http-conduit
+    , html-conduit
+    , tagsoup
+    , text           >=1.2.5.0
 
   hs-source-dirs:     src
   default-language:   Haskell2010
