@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
 module Scraper.Parsers (
   Article (..),
@@ -7,20 +6,6 @@ module Scraper.Parsers (
   extractArticles,
 ) where
 
-import Data.ByteString (ByteString)
-import Data.Text (Text)
-import Relude (
-  Bool (False),
-  ConvertUtf8 (decodeUtf8),
-  Eq ((==)),
-  Maybe (Nothing),
-  Monad (return),
-  Show,
-  head,
-  mapMaybe,
-  viaNonEmpty,
-  ($),
- )
 import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
 
 data Article = Article
@@ -28,7 +13,7 @@ data Article = Article
   , url :: Text
   , content :: Text
   }
-  deriving (Show, Eq)
+  deriving stock (Show, Eq)
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
