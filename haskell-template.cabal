@@ -92,6 +92,7 @@ common shared
     , tagsoup
     , text           >=1.2.5.0
     , retry 
+    , tokenize
 
   hs-source-dirs:     src
   default-language:   Haskell2010

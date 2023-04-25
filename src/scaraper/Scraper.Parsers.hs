@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Scraper.Parsers (
+module Scaraper.Scraper.Parsers (
   Article (..),
   parseArticle,
   extractArticles,
