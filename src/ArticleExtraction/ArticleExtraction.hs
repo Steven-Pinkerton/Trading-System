@@ -1,22 +1,17 @@
-module ArticleExtraction.Article (
+module ArticleExtraction.ArticleExtraction (
   Article (..),
-   extractAndPreprocess,
+  extractAndPreprocess,
   fetchUrl,
-  preprocessArticle
+  preprocessArticle,
 ) where
 
+import ArticleExtraction.Preprocessing (preprocess)
+import Control.Exception (catch)
 import Network.HTTP.Client (HttpException, parseRequest)
 import Network.HTTP.Simple (getResponseBody, httpBS)
-import ArticleExtraction.Preprocessing (preprocess)
+import Common (Article (..))
 import Scraper.Parsers (extractArticles)
-import Control.Exception (catch)
 
-data Article = Article
-  { title :: Text
-  , url :: Text
-  , content :: Text
-  }
-  deriving stock (Eq, Show)
 
 -- | 'extractAndPreprocess' function takes a URL and returns a list of preprocessed articles.
 extractAndPreprocess :: String -> IO (Either HttpException [Article])

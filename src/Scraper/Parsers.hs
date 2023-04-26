@@ -1,13 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Scraper.Parsers (
-  Article (..),
   parseArticle,
   extractArticles,
 ) where
 
 import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
-import ArticleExtraction.Article (Article (Article))
+import Common (Article (..))
 
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
