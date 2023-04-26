@@ -4,7 +4,6 @@ module Preprocessing (
   preprocess,
 ) where
 
-import Data.Text (Text)
 import Data.Text qualified as T
 import NLP.Tokenize.Text (tokenize)
 import Text.HTML.TagSoup (innerText, parseTags)
