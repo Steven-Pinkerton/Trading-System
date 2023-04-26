@@ -7,13 +7,8 @@ module Scraper.Parsers (
 ) where
 
 import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
+import ArticleExtraction.Article (Article (Article))
 
-data Article = Article
-  { title :: Text
-  , url :: Text
-  , content :: Text
-  }
-  deriving stock (Show, Eq)
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
