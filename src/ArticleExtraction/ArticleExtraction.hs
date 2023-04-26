@@ -1,4 +1,4 @@
-module ArticleExtraction (
+module ArticleExtraction.ArticleExtraction (
   ) where
 
 import ArticleExtraction.Article (Article (..), extractArticles)
