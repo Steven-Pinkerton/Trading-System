@@ -31,8 +31,8 @@ extractAndPreprocess url' = do
 
 -- | 'fetchUrl' function takes a URL and returns the content as 'ByteString' or an 'HttpException'.
 fetchUrl :: String -> IO (Either HttpException ByteString)
-fetchUrl url = do
-  req <- parseRequest url
+fetchUrl url' = do
+  req <- parseRequest url'
   (Right . getResponseBody <$> httpBS req) `catch` (return . Left)
 
 -- | 'preprocessArticle' function takes an 'Article' and returns a preprocessed 'Article'.
