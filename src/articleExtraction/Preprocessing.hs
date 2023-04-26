@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Preprocessing (
+module ArticleExtraction.Preprocessing (
   preprocess,
 ) where
 
