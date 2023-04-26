@@ -1,4 +1,4 @@
-module WebScraperSpec where
+module Test.WebScraperSpec where
 
 -- Import your webScraper module here
 import Network.HTTP.Client (newManager)

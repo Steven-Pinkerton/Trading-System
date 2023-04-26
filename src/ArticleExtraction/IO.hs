@@ -4,10 +4,8 @@ module ArticleExtraction.IO (
 ) where
 
 import ArticleExtraction.Article (Article, articleToText, textToArticle)
-import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import System.Directory (doesFileExist)
-import System.FilePath ((</>))
 
 -- | 'saveArticles' function takes a file path and a list of 'Article's and saves them to the specified file.
 saveArticles :: FilePath -> [Article] -> IO ()
