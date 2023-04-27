@@ -4,9 +4,9 @@ module SentimentAnalysis.PythonScript (
   -- other utility functions for working with the Python script
 ) where
 
-import Data.Text (Text)
 import Data.Text qualified as T
 import System.Process (readProcess)
+import SentimentAnalysis.Sentiment (Sentiment(..))
 
 -- | 'callPythonScript' function takes an 'Article' or 'Text' and returns the raw output from the Python script.
 callPythonScript :: Text -> IO Text
