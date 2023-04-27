@@ -94,6 +94,7 @@ common shared
     , retry 
     , tokenize
     , http-client
+    , process
     
 
   hs-source-dirs:     src
