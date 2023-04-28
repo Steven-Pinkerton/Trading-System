@@ -1,4 +1,4 @@
-module ArticleExtractionSpec (spec) where
+module Test.ArticleExtractionSpec (spec) where
 
 import Test.Hspec
 import ArticleExtraction.ArticleExtraction (Article(..), extractAndPreprocess)
