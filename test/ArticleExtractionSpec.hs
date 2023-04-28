@@ -1,7 +1,7 @@
 module ArticleExtractionSpec (spec) where
 
-import ArticleExtraction.ArticleExtraction (Article (..), extractAndPreprocess)
 import Test.Hspec
+import ArticleExtraction.ArticleExtraction (Article(..), extractAndPreprocess)
 
 spec :: Spec
 spec = do
@@ -14,5 +14,4 @@ spec = do
         Right articles -> do
           length articles `shouldBe` 3
           title (head articles) `shouldBe` "Sample Article 1"
-
--- Add more assertions to check the content of the extracted articles
+          -- Add more assertions to check the content of the extracted articles
