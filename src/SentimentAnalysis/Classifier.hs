@@ -3,11 +3,16 @@ module SentimentAnalysis.Classifier (
 ) where
 
 import SentimentAnalysis.Sentiment (Sentiment(..))
+import System.Process ( readProcess )
+import Data.Text
+
 
 -- | 'classifySentiment' function takes a preprocessed text and returns the sentiment.
-classifySentiment :: Text -> _ -> IO Sentiment
-classifySentiment text loadModel = do
-  model <- loadModel "distilbert-base-uncased-finetuned-sst-2-english"
-  tokenizer <- loadTokenizer "distilbert-base-uncased-finetuned-sst-2-english"
-  let tokens = tokenize tokenizer text
-  sentimentClassifier model tokens
+classifySentiment :: Text -> IO Sentiment
+classifySentiment text = do
+  let pythonScriptPath = "path/to/your/sentiment_analysis.py"
+  output <- readProcess "python" [pythonScriptPath, toString text] ""
+  return $ case strip (toText output) of
+    "positive" -> Positive
+    "negative" -> Negative
+    _ -> Neutral
