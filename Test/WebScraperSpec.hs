@@ -4,7 +4,7 @@ module Test.WebScraperSpec (Spec) where
 import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Test.Hspec
-import WebScraper
+import Scaraper.Scraper
 
 spec :: Spec
 spec = do

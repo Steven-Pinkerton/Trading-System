@@ -95,6 +95,7 @@ common shared
     , tokenize
     , http-client
     , process
+    , http-client-tls
     
 
   hs-source-dirs:     src
