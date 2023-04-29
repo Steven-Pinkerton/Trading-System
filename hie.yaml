@@ -2,3 +2,8 @@ cradle:
   cabal:
     - path: "src"
       component: "exe:haskell-template"
+     - path: "./Test"
+      config:
+        cradle:
+          cabal:
+            component: "test:test"
