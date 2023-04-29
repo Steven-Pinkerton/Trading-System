@@ -3,8 +3,8 @@ module Test.WebScraperSpec (Spec) where
 -- Import your webScraper module here
 import Network.HTTP.Client (newManager)
 import Network.HTTP.Client.TLS (tlsManagerSettings)
-import Test.Hspec
-import Scaraper.Scraper
+import Test.Hspec ( describe, it, shouldSatisfy, Spec )
+import Scraper.Scraper ()
 
 spec :: Spec
 spec = do

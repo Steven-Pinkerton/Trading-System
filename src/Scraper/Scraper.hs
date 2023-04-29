@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Scaraper.Scraper (
+module Scraper.Scraper (
   fetchPage,
   extractLinks,
 ) where
