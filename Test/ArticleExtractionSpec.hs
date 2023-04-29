@@ -1,18 +1,20 @@
 module ArticleExtractionSpec where
 
 import Test.Hspec
-    ( describe, it, expectationFailure, shouldBe, Spec )
-import ArticleExtraction.ArticleExtraction (Article(..), extractAndPreprocess)
+    ( describe, it, shouldBe, Spec, shouldSatisfy )
+import Common ( Article(content, title) )
+import Scraper.Parsers ( extractArticles )
 
 spec :: Spec
 spec = do
-  describe "ArticleExtraction.extractAndPreprocess" $ do
-    it "should extract and preprocess articles from a given URL" $ do
-      let testUrl = "https://example.com/test_articles.html"
-      result <- extractAndPreprocess testUrl
-      case result of
-        Left err -> expectationFailure $ "Failed to fetch articles: " ++ show err
-        Right articles -> do
-          length articles `shouldBe` 3
-          title (head articles) `shouldBe` "Sample Article 1"
-          -- Add more assertions to check the content of the extracted articles
+  describe "extractArticles" $ do
+    it "should return a non-empty list of articles for a valid HTML input" $ do
+      let html = "<html><body><div class=\"article\"><h1>Sample Article 1</h1><p>Content 1</p></div><div class=\"article\"><h1>Sample Article 2</h1><p>Content 2</p></div></body></html>"
+      let articles = extractArticles html
+      length articles `shouldSatisfy` (> 0)
+
+    it "should extract the correct title and content for the first article" $ do
+      let html = "<html><body><div class=\"article\"><h1>Sample Article 1</h1><p>Content 1</p></div><div class=\"article\"><h1>Sample Article 2</h1><p>Content 2</p></div></body></html>"
+      let articles = extractArticles html
+      (title <$> viaNonEmpty head articles) `shouldBe` Just "Sample Article 1"
+      (content <$> viaNonEmpty head articles) `shouldBe` Just "Content 1"
