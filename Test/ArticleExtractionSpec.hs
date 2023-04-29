@@ -1,6 +1,7 @@
-module Test.ArticleExtractionSpec (Spec) where
+module ArticleExtractionSpec where
 
 import Test.Hspec
+    ( describe, it, expectationFailure, shouldBe, Spec )
 import ArticleExtraction.ArticleExtraction (Article(..), extractAndPreprocess)
 
 spec :: Spec
