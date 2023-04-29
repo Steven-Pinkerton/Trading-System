@@ -1,17 +1,15 @@
 module WebScraperSpec where
 
 -- Import your webScraper module here
-import Network.HTTP.Client (newManager)
-import Network.HTTP.Client.TLS (tlsManagerSettings)
 import Test.Hspec ( describe, it, shouldSatisfy, Spec )
-import Scraper.Scraper (fetechPage, extractLinks)
+import Scraper.Scraper (fetchPage, extractLinks)
+import qualified Data.ByteString as B
 
 spec :: Spec
 spec = do
   describe "fetchPage" $ do
     it "should return a non-empty ByteString for a valid URL" $ do
-      manager <- newManager tlsManagerSettings
-      page <- fetchPage "https://example.com" manager
+      page <- fetchPage "https://example.com"
       page `shouldSatisfy` (not . B.null)
 
   describe "extractLinks" $ do
