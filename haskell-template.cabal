@@ -105,7 +105,7 @@ test-suite test
   main-is:        Spec.hs
   ghc-options:    -main-is Spec
   type:           exitcode-stdio-1.0
-  hs-source-dirs: tests
+  hs-source-dirs: Test
   build-depends:
     , hspec
     , hspec-discover
