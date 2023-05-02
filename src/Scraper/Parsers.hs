@@ -3,12 +3,14 @@
 module Scraper.Parsers (
   parseArticle,
   extractArticles,
+  extractArticlesGamesIndustry,
 ) where
 
 import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
 import Common (Article (..))
-import Text.XML.Lens
-
+import Control.Lens (view, (&), (.~), (^.), (^..))
+import Text.XML (parseLBS_)
+import Text.XML.Lens (attribute, contents, eachInClass, element)
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
