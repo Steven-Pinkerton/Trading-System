@@ -1,4 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use 'mapMaybe' from Relude" #-}
 
 module Scraper.Parsers (
   parseArticle,
@@ -8,9 +10,9 @@ module Scraper.Parsers (
 
 import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
 import Common (Article (..))
-import Control.Lens (view, (&), (.~), (^.), (^..))
-import Text.XML (parseLBS_)
-import Text.XML.Lens (attribute, contents, eachInClass, element)
+import Text.XML (parseLBS, def)
+import Text.XML.Cursor qualified as Cursor
+import Text.XML.Cursor ( fromDocument, ($//), (&/) )
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
@@ -47,13 +49,19 @@ isTagOpenName _ _ = False
 
 extractArticlesGamesIndustry :: Text -> [Article]
 extractArticlesGamesIndustry html = do
-  let doc = parseLBS_ html
-  let articleNodes = doc ^.. eachInClass "summary"
-  map extractArticleFromNode articleNodes
+  let doc = case parseLBS def (encodeUtf8 html) of
+        Left _ -> error "Failed to parse HTML"
+        Right d -> d
+  let cursor = fromDocument doc
+  let articleNodes = cursor $// Cursor.element "div" >=> Cursor.attributeIs "class" "summary"
+  mapMaybe extractArticleFromNode articleNodes
   where
-    extractArticleFromNode node = do
-      let titleNode = node ^. element "a" . attribute "title"
-      let urlNode = node ^. element "a" . attribute "href"
-      let contentNodes = node ^.. eachInClass "strapline" . element "p" . contents
-      let contentText = concat contentNodes
-      Article titleNode urlNode contentText
+    extractArticleFromNode articleNode = do
+      let titleNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "title")
+      let urlNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "href")
+      let contentNodes = articleNode $// Cursor.element "p" &/ Cursor.content
+      let contentText = unwords contentNodes
+
+      case (titleNodeMaybe, urlNodeMaybe) of
+        (Just titleNode, Just urlNode) -> Just $ Article titleNode urlNode contentText
+        _ -> Nothing
