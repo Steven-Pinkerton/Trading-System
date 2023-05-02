@@ -1,4 +1,4 @@
-module ArticleExtraction.ArticleExtraction (
+module ArticleExtraction (
   Article (..),
   extractAndPreprocess,
   fetchUrl,
@@ -6,12 +6,13 @@ module ArticleExtraction.ArticleExtraction (
 ) where
 
 import ArticleExtraction.Preprocessing (preprocess)
-import Control.Exception (catch)
-import Network.HTTP.Client (HttpException, parseRequest)
-import Network.HTTP.Simple (getResponseBody, httpBS)
 import Common (Article (..))
+import Control.Exception (catch)
+import Data.Text (Text, isInfixOf, pack)
+import Network.HTTP.Client (HttpException, parseRequest, Manager)
+import Network.HTTP.Simple (getResponseBody, httpBS)
 import Scraper.Parsers (extractArticles)
-
+import Scaraper.Requests
 
 -- | 'extractAndPreprocess' function takes a URL and returns a list of preprocessed articles.
 extractAndPreprocess :: String -> IO (Either HttpException [Article])
@@ -20,7 +21,7 @@ extractAndPreprocess url' = do
   case result of
     Left err -> return $ Left err
     Right content' -> do
-      let articles = extractArticles content'
+      let articles = extractArticlesForSite (pack url') content'
           preprocessedArticles = map preprocessArticle articles
       return $ Right preprocessedArticles
 
@@ -35,3 +36,23 @@ preprocessArticle :: Article -> Article
 preprocessArticle (Article title' url' content') =
   let preprocessedContent = preprocess content'
    in Article title' url' (unwords preprocessedContent)
+
+data Site = GamesIndustryBiz | OtherSite
+
+identifySite :: Text -> Site
+identifySite url =
+  if "gamesindustry.biz" `isInfixOf` url
+    then GamesIndustryBiz
+    else OtherSite
+
+extractArticlesForSite :: Text -> Text -> [Article]
+extractArticlesForSite siteUrl html =
+  case identifySite siteUrl of
+    GamesIndustryBiz -> extractArticlesGamesIndustry html
+    OtherSite -> extractArticles html
+
+scrapeArticles :: Text -> Manager -> IO [Article]
+scrapeArticles url manager = do
+  html <- fetchPage url manager
+  let articles = extractArticlesForSite url html
+  return articles

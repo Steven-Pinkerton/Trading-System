@@ -9,7 +9,7 @@ spec :: Spec
 spec = do
   describe "fetchPage" $ do
     it "should return a non-empty ByteString for a valid URL" $ do
-      page <- fetchPage "https://example.com"
+      page <- fetchPage "https://www.bbc.co.uk/news/business-65123115"
       page `shouldSatisfy` (not . B.null)
 
   describe "extractLinks" $ do

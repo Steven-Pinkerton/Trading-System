@@ -7,6 +7,7 @@ module Scraper.Parsers (
 
 import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
 import Common (Article (..))
+import Text.XML.Lens
 
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
@@ -41,3 +42,16 @@ extractArticles html =
 isTagOpenName :: Text -> Tag Text -> Bool
 isTagOpenName name (TagOpen n _) = n == name
 isTagOpenName _ _ = False
+
+extractArticlesGamesIndustry :: Text -> [Article]
+extractArticlesGamesIndustry html = do
+  let doc = parseLBS_ html
+  let articleNodes = doc ^.. eachInClass "summary"
+  map extractArticleFromNode articleNodes
+  where
+    extractArticleFromNode node = do
+      let titleNode = node ^. element "a" . attribute "title"
+      let urlNode = node ^. element "a" . attribute "href"
+      let contentNodes = node ^.. eachInClass "strapline" . element "p" . contents
+      let contentText = concat contentNodes
+      Article titleNode urlNode contentText

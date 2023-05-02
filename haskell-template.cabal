@@ -96,6 +96,7 @@ common shared
     , http-client
     , process
     , http-client-tls
+    , xml-lens
     
 
   hs-source-dirs:     src
