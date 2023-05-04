@@ -29,7 +29,8 @@ import Text.XML.Cursor
       (&//),
       Cursor )
 import Text.XML (def)
-import qualified Text.HTML.TagSoup
+import Text.HTML.TagSoup
+    ( sections, parseTags, innerText, fromAttrib, Tag, isTagOpenName )
 
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
