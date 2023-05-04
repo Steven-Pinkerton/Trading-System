@@ -6,22 +6,40 @@ module Scraper.Parsers (
   parseArticle,
   extractArticles,
   extractArticlesGamesIndustry,
+  fetchArticleContent,
+  extractContent,
 ) where
 
-import Text.HTML.TagSoup (Tag (..), fromAttrib, innerText, parseTags, sections)
-import Common (Article (..))
-import Text.XML (parseLBS, def)
-import Text.XML.Cursor qualified as Cursor
-import Text.XML.Cursor ( fromDocument, ($//), (&/) )
+import Data.ByteString.Lazy ()
+import Data.Text (intercalate)
+import Data.Text.Encoding ()
+import Data.Text.Lazy.Encoding ()
+import Network.HTTP.Client (defaultManagerSettings, httpLbs, newManager, parseRequest, Response (responseBody))
+import Text.HTML.DOM (parseLBS)
+import ArticleExtraction.Article ( Article(Article) )
+import qualified Text.XML
+import qualified Text.XML.Cursor as Cursor
+import Text.XML.Cursor
+    ( attributeIs,
+      content,
+      element,
+      fromDocument,
+      ($//),
+      (&/),
+      (&//),
+      Cursor )
+import Text.XML (def)
+import qualified Text.HTML.TagSoup
+
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
 -}
 parseArticle :: [Tag Text] -> Maybe Article
 parseArticle tags = do
-  titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
-  urlTags <- viaNonEmpty head (sections (isTagOpenName "a") tags)
-  contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
+  titleTags <- viaNonEmpty head (sections (Text.HTML.TagSoup.isTagOpenName "h1") tags)
+  urlTags <- viaNonEmpty head (sections (Text.HTML.TagSoup.isTagOpenName "a") tags)
+  contentTags <- viaNonEmpty head (sections (Text.HTML.TagSoup.isTagOpenName "p") tags)
 
   titleTag <- viaNonEmpty head titleTags
   urlTag <- viaNonEmpty head urlTags
@@ -39,17 +57,13 @@ parseArticle tags = do
 extractArticles :: ByteString -> [Article]
 extractArticles html =
   let tags = parseTags (decodeUtf8 html)
-      articleSections = sections (isTagOpenName "article") tags
+      articleSections = sections (Text.HTML.TagSoup.isTagOpenName "article") tags
       articles = mapMaybe parseArticle articleSections
    in articles
 
-isTagOpenName :: Text -> Tag Text -> Bool
-isTagOpenName name (TagOpen n _) = n == name
-isTagOpenName _ _ = False
-
 extractArticlesGamesIndustry :: Text -> [Article]
 extractArticlesGamesIndustry html = do
-  let doc = case parseLBS def (encodeUtf8 html) of
+  let doc = case Text.XML.parseLBS def (encodeUtf8 html) of
         Left _ -> error "Failed to parse HTML"
         Right d -> d
   let cursor = fromDocument doc
@@ -65,3 +79,17 @@ extractArticlesGamesIndustry html = do
       case (titleNodeMaybe, urlNodeMaybe) of
         (Just titleNode, Just urlNode) -> Just $ Article titleNode urlNode contentText
         _ -> Nothing
+
+fetchArticleContent :: String -> IO (Maybe Text)
+fetchArticleContent url = do
+  manager <- newManager defaultManagerSettings
+  request <- parseRequest url
+  response <- httpLbs request manager
+  let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
+  return $ extractContent cursor
+
+extractContent :: Cursor -> Maybe Text
+extractContent cursor = do
+  let contentNodes = cursor $// element "div" >=> attributeIs "class" "main-content" &// element "p" &/ content
+  let contentText = Data.Text.intercalate "\n" contentNodes
+  return contentText
