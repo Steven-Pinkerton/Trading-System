@@ -62,6 +62,10 @@ extractArticles html =
       articles = mapMaybe parseArticle articleSections
    in articles
 
+
+{- | 'extractArticlesGamesIndustry' takes a Text containing an HTML document and extracts a list of 'Article's from it.
+It uses 'extractArticleFromNode' internally to parse individual articles.
+-}
 extractArticlesGamesIndustry :: Text -> [Article]
 extractArticlesGamesIndustry html = do
   let doc = case Text.XML.parseLBS def (encodeUtf8 html) of
@@ -71,6 +75,12 @@ extractArticlesGamesIndustry html = do
   let articleNodes = cursor $// Cursor.element "div" >=> Cursor.attributeIs "class" "summary"
   mapMaybe extractArticleFromNode articleNodes
   where
+    {- | 'extractArticleFromNode' is a local helper function for 'extractArticlesGamesIndustry'.
+     It takes an 'articleNode' as input, which is a cursor pointing to an individual article
+     in the HTML structure. The function extracts the title, URL, and content from the node
+     and returns a 'Maybe Article'. If the title and URL can be extracted successfully, it
+     returns 'Just Article'; otherwise, it returns 'Nothing'.
+    -}
     extractArticleFromNode articleNode = do
       let titleNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "title")
       let urlNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "href")
@@ -81,6 +91,9 @@ extractArticlesGamesIndustry html = do
         (Just titleNode, Just urlNode) -> Just $ Article titleNode urlNode contentText
         _ -> Nothing
 
+{- | 'fetchArticleContent' takes a URL as input and fetches the HTML content of the page.
+ It then uses 'extractContent' to extract the main content of the page, returning a 'Maybe Text'.
+-}
 fetchArticleContent :: String -> IO (Maybe Text)
 fetchArticleContent url = do
   manager <- newManager defaultManagerSettings
@@ -89,6 +102,11 @@ fetchArticleContent url = do
   let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
   return $ extractContent cursor
 
+
+{- | 'extractContent' takes a 'Cursor' pointing to the root of an HTML document and extracts the main content.
+ It looks for a 'div' element with a "class" attribute of "main-content", then collects all 'p' elements
+ within that 'div'. The content is concatenated with newline characters and returned as a 'Maybe Text'.
+-}
 extractContent :: Cursor -> Maybe Text
 extractContent cursor = do
   let contentNodes = cursor $// element "div" >=> attributeIs "class" "main-content" &// element "p" &/ content
