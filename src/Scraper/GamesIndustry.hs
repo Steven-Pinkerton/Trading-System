@@ -10,6 +10,8 @@ import Text.XML.Cursor (fromDocument, ($//), (&/))
 {- | 'extractArticlesGamesIndustry' takes a Text containing an HTML document and extracts a list of 'Article's from it.
 It uses 'extractArticleFromNode' internally to parse individual articles.
 -}
+
+
 extractArticlesGamesIndustry :: Text -> [Article]
 extractArticlesGamesIndustry html = do
   let doc = case Text.XML.parseLBS def (encodeUtf8 html) of

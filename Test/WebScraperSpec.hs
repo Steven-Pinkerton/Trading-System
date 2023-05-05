@@ -2,7 +2,8 @@ module WebScraperSpec where
 
 -- Import your webScraper module here
 import Test.Hspec ( describe, it, shouldSatisfy, Spec )
-import Scraper.Scraper (fetchPage, extractLinks)
+import Scraper.Scraper (extractLinks)
+import Scraper.Requests (fetchPage)
 import qualified Data.ByteString as B
 
 spec :: Spec

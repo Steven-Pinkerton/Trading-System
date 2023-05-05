@@ -1,35 +1,48 @@
 module ArticleExtraction (
   Article (..),
   extractAndPreprocess,
-  fetchUrl,
   preprocessArticle,
 ) where
 
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
-import Control.Exception (catch)
 import Data.Text (Text, isInfixOf, pack)
-import Network.HTTP.Client (HttpException, parseRequest, Manager)
-import Network.HTTP.Simple (getResponseBody, httpBS)
+import Network.HTTP.Client
+    ( HttpException(HttpExceptionRequest),
+      Manager,
+      Request(host),
+      HttpExceptionContent(StatusCodeException),
+      defaultRequest,
+      host,
+      responseHeaders )
 import Scraper.Parsers (extractArticles)
-import Scaraper.Requests
+import Scraper.Requests ( fetchPage, fetchPageWithRetry )
+import Network.HTTP.Types.Status (Status (..))
+import Network.HTTP.Types.Header (ResponseHeaders)
+import Data.ByteString.Char8 (pack)
 
 -- | 'extractAndPreprocess' function takes a URL and returns a list of preprocessed articles.
 extractAndPreprocess :: String -> IO (Either HttpException [Article])
 extractAndPreprocess url' = do
-  result <- fetchUrl url'
+  result <- fetchPageWithRetry (pack url')
   case result of
-    Left err -> return $ Left err
+    Left someErr ->
+      case fromException someErr of
+        Just httpErr -> return $ Left httpErr
+        Nothing -> return $ Left (toHttpException someErr)
     Right content' -> do
-      let articles = extractArticlesForSite (pack url') content'
+      let decodedContent = decodeUtf8 content'
+          articles = extractArticlesForSite (pack url') decodedContent
           preprocessedArticles = map preprocessArticle articles
       return $ Right preprocessedArticles
 
--- | 'fetchUrl' function takes a URL and returns the content as 'ByteString' or an 'HttpException'.
-fetchUrl :: String -> IO (Either HttpException ByteString)
-fetchUrl url' = do
-  req <- parseRequest url'
-  (Right . getResponseBody <$> httpBS req) `catch` (return . Left)
+toHttpException :: SomeException -> HttpException
+toHttpException someErr = HttpExceptionRequest defaultRequest (StatusCodeException status headers)
+  where
+    defaultRequest = defaultRequest {host = "example.com"}
+    status = Status 999 "Unknown Error"
+    headers :: ResponseHeaders
+    headers = [(pack "X-Error-Message", pack (displayException someErr))]
 
 -- | 'preprocessArticle' function takes an 'Article' and returns a preprocessed 'Article'.
 preprocessArticle :: Article -> Article

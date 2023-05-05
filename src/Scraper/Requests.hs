@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Scaraper.Requests
+module Scraper.Requests
     ( fetchPage
     , fetchPageWithRetry
     ) where
