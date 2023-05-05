@@ -2,29 +2,32 @@ module ArticleExtraction (
   Article (..),
   extractAndPreprocess,
   preprocessArticle,
+  scrapeArticles,
 ) where
 
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
-import Data.Text (Text, isInfixOf, pack)
-import Network.HTTP.Client
-    ( HttpException(HttpExceptionRequest),
-      Manager,
-      Request(host),
-      HttpExceptionContent(StatusCodeException),
-      defaultRequest,
-      host,
-      responseHeaders )
+import Data.CaseInsensitive (mk)
+import Data.Text (isInfixOf)
+import Network.HTTP.Client (
+  HttpException (HttpExceptionRequest),
+  HttpExceptionContent (StatusCodeException),
+  Manager,
+  Request (host),
+  Response (responseBody, responseCookieJar, responseVersion),
+  host,
+  responseHeaders,
+  responseStatus,
+ )
+import Network.HTTP.Types (Status (..), http11)
+import Scraper.GamesIndustry (extractArticlesGamesIndustry)
 import Scraper.Parsers (extractArticles)
-import Scraper.Requests ( fetchPage, fetchPageWithRetry )
-import Network.HTTP.Types.Status (Status (..))
-import Network.HTTP.Types.Header (ResponseHeaders)
-import Data.ByteString.Char8 (pack)
+import Scraper.Requests (fetchPage, fetchPageWithRetry)
 
 -- | 'extractAndPreprocess' function takes a URL and returns a list of preprocessed articles.
 extractAndPreprocess :: String -> IO (Either HttpException [Article])
 extractAndPreprocess url' = do
-  result <- fetchPageWithRetry (pack url')
+  result <- fetchPageWithRetry (toText url')
   case result of
     Left someErr ->
       case fromException someErr of
@@ -32,23 +35,29 @@ extractAndPreprocess url' = do
         Nothing -> return $ Left (toHttpException someErr)
     Right content' -> do
       let decodedContent = decodeUtf8 content'
-          articles = extractArticlesForSite (pack url') decodedContent
+          articles = extractArticlesForSite (toText url') decodedContent
           preprocessedArticles = map preprocessArticle articles
       return $ Right preprocessedArticles
 
 toHttpException :: SomeException -> HttpException
-toHttpException someErr = HttpExceptionRequest defaultRequest (StatusCodeException status headers)
+toHttpException someErr = HttpExceptionRequest defaultRequest (StatusCodeException response ())
   where
     defaultRequest = defaultRequest {host = "example.com"}
-    status = Status 999 "Unknown Error"
-    headers :: ResponseHeaders
-    headers = [(pack "X-Error-Message", pack (displayException someErr))]
+    response :: Response ()
+    response =
+      response
+        { responseStatus = Status 999 "Unknown Error"
+        , responseVersion = http11
+        , responseHeaders = [(mk (encodeUtf8 "X-Error-Message"), encodeUtf8 (displayException someErr))]
+        , responseBody = ()
+        , responseCookieJar = mempty
+        }
 
 -- | 'preprocessArticle' function takes an 'Article' and returns a preprocessed 'Article'.
 preprocessArticle :: Article -> Article
-preprocessArticle (Article title' url' content') =
+preprocessArticle (MkArticle title' url' content') =
   let preprocessedContent = preprocess content'
-   in Article title' url' (unwords preprocessedContent)
+   in MkArticle title' url' (unwords preprocessedContent)
 
 data Site = GamesIndustryBiz | OtherSite
 
@@ -66,6 +75,9 @@ extractArticlesForSite siteUrl html =
 
 scrapeArticles :: Text -> Manager -> IO [Article]
 scrapeArticles url manager = do
-  html <- fetchPage url manager
-  let articles = extractArticlesForSite url html
-  return articles
+  result <- fetchPageWithRetry url
+  case result of
+    Left _ -> return [] -- You can decide how to handle the error case here
+    Right html -> do
+      let articles = extractArticlesForSite url (decodeUtf8 html)
+      return articles

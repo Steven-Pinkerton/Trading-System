@@ -15,7 +15,7 @@ import Data.Text.Encoding ()
 import Data.Text.Lazy.Encoding ()
 import Network.HTTP.Client (defaultManagerSettings, httpLbs, newManager, parseRequest, Response (responseBody))
 import Text.HTML.DOM (parseLBS)
-import ArticleExtraction.Article ( Article(Article) )
+
 import Text.XML.Cursor
     ( attributeIs,
       content,
@@ -27,13 +27,15 @@ import Text.XML.Cursor
       Cursor )
 import Text.HTML.TagSoup
     ( sections, parseTags, innerText, fromAttrib, Tag, isTagOpenName )
+import Common (Article (MkArticle))
 
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
 -}
-parseArticle :: [Tag Text] -> Maybe Article
-parseArticle tags = do
+parseArticle :: [Tag Text] -> (Text -> Text -> Text -> Article) -> Maybe Article
+
+parseArticle tags mkArticle = do
   titleTags <- viaNonEmpty head (sections (Text.HTML.TagSoup.isTagOpenName "h1") tags)
   urlTags <- viaNonEmpty head (sections (Text.HTML.TagSoup.isTagOpenName "a") tags)
   contentTags <- viaNonEmpty head (sections (Text.HTML.TagSoup.isTagOpenName "p") tags)
@@ -46,7 +48,7 @@ parseArticle tags = do
       urltext = fromAttrib "href" urlTag
       contenttext = innerText [contentTag]
 
-  return $ Article titletext urltext contenttext
+  return $ mkArticle titletext urltext contenttext
 
 {- | 'extractArticles' takes an HTML ByteString and extracts a list of 'Article's from it.
  It uses 'parseArticle' internally to parse individual articles.
@@ -55,9 +57,8 @@ extractArticles :: ByteString -> [Article]
 extractArticles html =
   let tags = parseTags (decodeUtf8 html)
       articleSections = sections (Text.HTML.TagSoup.isTagOpenName "article") tags
-      articles = mapMaybe parseArticle articleSections
+      articles = mapMaybe (`parseArticle` MkArticle) articleSections
    in articles
-
 
 {- | 'extractArticlesGamesIndustry' takes a Text containing an HTML document and extracts a list of 'Article's from it.
 It uses 'extractArticleFromNode' internally to parse individual articles.

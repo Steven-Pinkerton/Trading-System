@@ -3,7 +3,7 @@ module Common (
 ) where
 
 
-data Article = Article
+data Article = MkArticle
   { title :: Text
   , url :: Text
   , content :: Text

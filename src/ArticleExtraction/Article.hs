@@ -1,19 +1,11 @@
 module ArticleExtraction.Article (
-  Article (..),
   articleToText,
   textToArticle,
 ) where
 
 import Data.Text qualified as T
 import Data.List ((!!))
-
--- | 'Article' data type represents an extracted article.
-data Article = Article
-  { title :: Text
-  , url :: Text
-  , content :: Text
-  }
-  deriving stock (Eq, Show)
+import Common (Article (MkArticle, title, url, content))
 
 -- | 'articleToText' function converts an 'Article' to 'Text'.
 articleToText :: Article -> Text
@@ -31,7 +23,7 @@ articleToText article =
 -}
 textToArticle :: Text -> Maybe Article
 textToArticle text = do
-  let lines' = lines text
+  let lines' = T.lines text
   guard (length lines' >= 3)
   let titleLine = lines' !! 0
       urlLine = lines' !! 1
@@ -39,4 +31,4 @@ textToArticle text = do
   title' <- T.stripPrefix "Title: " titleLine
   url' <- T.stripPrefix "URL: " urlLine
   content' <- T.stripPrefix "Content: " contentLine
-  return $ Article title' url' content'
+  return $ MkArticle title' url' content'

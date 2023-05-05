@@ -3,9 +3,10 @@ module Scraper.GamesIndustry (
 ) where
 
 import qualified Text.XML.Cursor as Cursor
-import ArticleExtraction.Article ( Article(Article) )
+
 import Text.XML ( parseLBS, def )
 import Text.XML.Cursor (fromDocument, ($//), (&/))
+import Common ( Article(MkArticle) )
 
 {- | 'extractArticlesGamesIndustry' takes a Text containing an HTML document and extracts a list of 'Article's from it.
 It uses 'extractArticleFromNode' internally to parse individual articles.
@@ -34,5 +35,5 @@ extractArticlesGamesIndustry html = do
       let contentText = unwords contentNodes
 
       case (titleNodeMaybe, urlNodeMaybe) of
-        (Just titleNode, Just urlNode) -> Just $ Article titleNode urlNode contentText
+        (Just titleNode, Just urlNode) -> Just $ MkArticle titleNode urlNode contentText
         _ -> Nothing
