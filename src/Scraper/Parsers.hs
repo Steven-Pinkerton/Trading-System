@@ -7,7 +7,10 @@ module Scraper.Parsers (
   extractArticles,
   fetchArticleContent,
   extractContent,
+  parseGamasutraArticle,
+  extractGamasutraArticles,
 ) where
+
 
 import Data.ByteString.Lazy ()
 import Data.Text (intercalate)
@@ -26,9 +29,8 @@ import Text.XML.Cursor
       (&//),
       Cursor )
 import Text.HTML.TagSoup
-    ( sections, parseTags, innerText, fromAttrib, Tag, isTagOpenName )
+    ( sections, parseTags, innerText, fromAttrib, Tag, isTagOpenName)
 import Common (Article (MkArticle))
-
 
 {- | 'parseArticle' takes a list of HTML tags and extracts an 'Article' from it.
  You may need to modify this function to suit the structure of your target websites.
@@ -85,3 +87,32 @@ extractContent cursor = do
   let contentNodes = cursor $// element "div" >=> attributeIs "class" "main-content" &// element "p" &/ content
   let contentText = Data.Text.intercalate "\n" contentNodes
   return contentText
+
+
+{- | 'extractGamasutraArticles' takes an HTML Text and extracts a list of 'Article's specific to Gamasutra's website.
+ It uses 'parseGamasutraArticle' internally to parse individual articles.
+-}
+extractGamasutraArticles :: [Tag Text] -> [Article]
+extractGamasutraArticles tags =
+  let articleSections = sections (isTagOpenName "article") tags
+      articles = mapMaybe parseGamasutraArticle articleSections
+   in articles
+
+{- | 'parseGamasutraArticle' takes a list of HTML tags specific to Gamasutra's website and extracts an 'Article' from it.
+ You may need to modify this function to suit the structure of the Gamasutra website.
+-}
+parseGamasutraArticle :: [Tag Text] -> Maybe Article
+parseGamasutraArticle tags = do
+  titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
+  urlTags <- viaNonEmpty head (sections (isTagOpenName "a") tags)
+  contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
+
+  titleTag <- viaNonEmpty head titleTags
+  urlTag <- viaNonEmpty head urlTags
+  contentTag <- viaNonEmpty head contentTags
+
+  let titleText = innerText [titleTag]
+      urlText = fromAttrib "href" urlTag
+      contentText = innerText [contentTag]
+
+  return $ MkArticle titleText urlText contentText
