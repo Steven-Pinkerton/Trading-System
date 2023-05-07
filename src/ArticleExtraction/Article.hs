@@ -23,7 +23,7 @@ articleToText article =
 -}
 textToArticle :: Text -> Maybe Article
 textToArticle text = do
-  let lines' = T.lines text
+  let lines' = lines text
   guard (length lines' >= 3)
   let titleLine = lines' !! 0
       urlLine = lines' !! 1
