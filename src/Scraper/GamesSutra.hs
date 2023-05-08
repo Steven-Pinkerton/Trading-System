@@ -2,22 +2,24 @@ module Scraper.GamesSutra (
   fetchGamasutraArticles,
 ) where
 
-import ArticleExtraction.Article (Article)
-import Data.Text (Text)
-import Data.Text qualified as T
-import Scraper.Parsers (parseGamasutraArticles)
-import Scraper.Requests (fetchHtml)
+import Common (Article (..))
+import Control.Monad (mapM)
+import Data.Text.Encoding (decodeUtf8)
+import Network.HTTP.Simple
+import Scraper.Parsers (parseGamasutra)
 
--- URL of Gamasutra's news page
-gamasutraUrl :: Text
-gamasutraUrl = "https://www.gamasutra.com/news"
+fetchArticle :: String -> IO (Either String Article)
+fetchArticle url = do
+  request <- parseRequest url
+  response <- httpLBS request
+  let body = decodeUtf8 $ getResponseBody response
+  return $ parseGamasutra url body
 
--- | Fetch the latest Gamasutra articles
-fetchGamasutraArticles :: IO [Article]
+fetchGamasutraArticles :: IO (Either String [Article])
 fetchGamasutraArticles = do
-  html <- fetchHtml gamasutraUrl
-  case parseGamasutraArticles html of
-    Left err -> do
-      putStrLn $ "Error parsing Gamasutra articles: " <> T.unpack err
-      return []
-    Right articles -> return articles
+  request <- parseRequest "https://www.gamasutra.com"
+  response <- httpLBS request
+  let body = decodeUtf8 $ getResponseBody response
+  case parseGamasutraUrls body of
+    Left error -> return $ Left error
+    Right urls -> mapM fetchArticle urls
