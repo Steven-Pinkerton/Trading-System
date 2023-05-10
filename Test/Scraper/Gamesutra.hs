@@ -3,8 +3,9 @@
 module Scraper.GamasutraSpec where
 
 import Data.Text.Lazy.Encoding (decodeUtf8)
-import Scraper.Parsers (parseGamasutraArticle)
+
 import Test.Hspec (Spec, describe, it, shouldBe)
+import Scraper.Gamasutra (parseGamasutraArticle)
 
 main :: IO ()
 main = hspec spec

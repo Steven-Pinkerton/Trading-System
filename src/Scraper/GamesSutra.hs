@@ -24,17 +24,17 @@ import Text.XML.Cursor
       Cursor )
 import qualified Data.Text
 import qualified Text.HTML.DOM
-import Network.HTTP.Client ( parseRequest, Response(responseBody) )
+import Network.HTTP.Client ( Response(responseBody) )
 
 
 -- Update the fetchArticle function
 -- Now it takes a Text parameter and returns IO (Either Text Article).
 fetchArticle :: Text -> IO (Either Text Article)
-fetchArticle url = do
-  request <- parseRequest (toString url)
+fetchArticle url' = do
+  request <- parseRequest (toString url')
   response <- httpLBS request
   let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
-  return $ parseGamasutra url cursor
+  return $ parseGamasutra url' cursor
 
 -- Update the fetchGamasutraArticles function
 -- Now it returns IO (Either Text [Article]).
@@ -50,7 +50,7 @@ fetchGamasutraArticles = do
 
 -- | 'extractGamasutraArticles' takes an HTML Text and extracts a list of 'Article's specific to Gamasutra's website.
 parseGamasutraArticle :: Text -> [Tag Text] -> Maybe Article
-parseGamasutraArticle url tags = do
+parseGamasutraArticle url' tags = do
   titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
   contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
 
@@ -60,7 +60,7 @@ parseGamasutraArticle url tags = do
   let titleText = innerText [titleTag]
       contentText = innerText [contentTag]
 
-  return $ MkArticle titleText url contentText
+  return $ MkArticle titleText url' contentText
 
 -- Update the extractGamasutraArticles function
 extractGamasutraArticles :: [Tag Text] -> [Article]
@@ -89,11 +89,11 @@ parseGamasutraUrls html =
 
 -- Update the parseGamasutra function
 parseGamasutra :: Text -> Cursor -> Either Text Article
-parseGamasutra url cursor =
+parseGamasutra url' cursor =
   let maybeTitle = extractGamasutraTitle cursor
       maybeContent = extractGamasutraContent cursor
    in case (maybeTitle, maybeContent) of
-        (Just title, Just content) -> Right $ MkArticle title url content
+        (Just title', Just content') -> Right $ MkArticle title' url' content'
         _ -> Left "Failed to parse Gamasutra article"
 
 -- | 'extractContent' takes a 'Cursor' pointing to the root of an HTML document and extracts the main content.
