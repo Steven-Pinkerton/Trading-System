@@ -8,10 +8,6 @@ module Scraper.Parsers (
   extractArticles,
   fetchArticleContent,
   extractContent,
-  parseGamasutraArticle,
-  extractGamasutraArticles,
-  parseGamasutraUrls,
-  parseGamasutra,
 ) where
 
 import Data.ByteString.Lazy ()
@@ -81,48 +77,3 @@ extractContent cursor = do
   let contentNodes = cursor $// element "div" >=> attributeIs "class" "main-content" &// element "p" &/ content
   let contentText = Data.Text.intercalate "\n" contentNodes
   return contentText
-
--- | 'extractGamasutraArticles' takes an HTML Text and extracts a list of 'Article's specific to Gamasutra's website.
-parseGamasutraArticle :: Text -> [Tag Text] -> Maybe Article
-parseGamasutraArticle url tags = do
-  titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
-  contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
-
-  titleTag <- viaNonEmpty head titleTags
-  contentTag <- viaNonEmpty head contentTags
-
-  let titleText = innerText [titleTag]
-      contentText = innerText [contentTag]
-
-  return $ MkArticle titleText url contentText
-
--- Update the extractGamasutraArticles function
-extractGamasutraArticles :: [Tag Text] -> [Article]
-extractGamasutraArticles tags =
-  let articleSections = sections (isTagOpenName "article") tags
-      parseWithUrl url = parseGamasutraArticle url
-      articles =
-        mapMaybe
-          ( \tags' -> do
-              urlTags <- viaNonEmpty head (sections (isTagOpenName "a") tags')
-              urlTag <- viaNonEmpty head urlTags
-              let urlText = fromAttrib "href" urlTag
-              parseWithUrl urlText tags'
-          )
-          articleSections
-   in articles
-
--- Update the parseGamasutraUrls function
-parseGamasutraUrls :: Text -> Either Text [Text]
-parseGamasutraUrls html =
-  let urls = parseUrls $ parseTags html
-   in maybeToRight "Failed to parse Gamasutra URLs" urls
-  where
-    parseUrls :: [Tag Text] -> Maybe [Text]
-    parseUrls tags = viaNonEmpty toList (fromAttrib "href" <$> concat (sections (isTagOpenName "section") tags))
-
--- Update the parseGamasutra function
-parseGamasutra :: Text -> Text -> Either Text Article
-parseGamasutra url html =
-  let article = parseGamasutraArticle url $ parseTags html
-   in maybeToRight "Failed to parse Gamasutra article" article

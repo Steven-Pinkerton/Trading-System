@@ -2,35 +2,24 @@
 
 module Scraper.GamasutraSpec where
 
-import Scraper.GamesSutra (fetchGamasutraArticles)
+import Data.Text.Lazy.Encoding (decodeUtf8)
+import Scraper.Parsers (parseGamasutraArticle)
 import Test.Hspec (Spec, describe, it, shouldBe)
-import Common ( Article(content) )
+
+main :: IO ()
+main = hspec spec
 
 spec :: Spec
 spec = do
-  describe "Gamasutra article fetching and parsing" $ do
-    -- Test case to fetch and parse Gamasutra articles
-    it "should fetch and parse Gamasutra articles" $ do
-      -- Fetch Gamasutra articles
-      eitherArticles <- fetchGamasutraArticles
+  describe "parseGamasutraArticle" $ do
+    it "extracts the correct content from the first Gamasutra article" $ do
+      article1Html <- decodeUtf8 <$> readFileLBS "test_data/gamasutra_article1.html"
+      article1Content <- parseGamasutraArticle article1Html
+      expectedContent <- decodeUtf8 <$> readFileLBS "expected_test_results/gamasutra_article1.expected.txt"
+      article1Content `shouldBe` Just expectedContent
 
-      -- Handle the result of fetching articles
-      case eitherArticles of
-        -- If there's an error, print the error message
-        Left err -> putStrLn $ "Error: " <> toString err
-        -- If articles are fetched successfully, check that the list is not empty and that each article has non-empty title, URL, and content
-        Right articles -> do
-          -- Check if the fetched articles list is not empty
-          Prelude.null articles `shouldBe` False
-
-          -- Read the expected content from the file
-          expectedContentLBS <- readFileLBS "test_data/expected_test_results/gamesutra_expected_results.txt"
-
-          -- Convert the expected content to Text
-          let expectedContent = decodeUtf8 expectedContentLBS
-
-          -- Find the first article with the same content as the expected content
-          let matchingArticle = find (\article -> content article == expectedContent) articles
-
-          -- Check if the matching article is found
-          isJust matchingArticle `shouldBe` True
+    it "extracts the correct content from the second Gamasutra article" $ do
+      article2Html <- decodeUtf8 <$> readFileLBS "test_data/gamasutra_article2.html"
+      article2Content <- parseGamasutraArticle article2Html
+      expectedContent <- decodeUtf8 <$> readFileLBS "expected_test_results/gamasutra_article2.expected.txt"
+      article2Content `shouldBe` Just expectedContent
