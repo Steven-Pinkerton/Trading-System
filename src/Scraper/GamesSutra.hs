@@ -60,7 +60,7 @@ parseGamasutraArticle url' tags = do
   let titleText = innerText [titleTag]
       contentText = innerText [contentTag]
 
-  return $ MkArticle titleText url' contentText
+  return $ Article titleText url' contentText
 
 -- Update the extractGamasutraArticles function
 extractGamasutraArticles :: [Tag Text] -> [Article]
@@ -93,7 +93,7 @@ parseGamasutra url' cursor =
   let maybeTitle = extractGamasutraTitle cursor
       maybeContent = extractGamasutraContent cursor
    in case (maybeTitle, maybeContent) of
-        (Just title', Just content') -> Right $ MkArticle title' url' content'
+        (Just title', Just content') -> Right $ Article title' url' content'
         _ -> Left "Failed to parse Gamasutra article"
 
 -- | 'extractContent' takes a 'Cursor' pointing to the root of an HTML document and extracts the main content.

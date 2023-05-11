@@ -6,7 +6,8 @@ import qualified Text.XML.Cursor as Cursor
 
 import Text.XML ( parseLBS, def )
 import Text.XML.Cursor (fromDocument, ($//), (&/))
-import Common ( Article(MkArticle) )
+import Common (Article(..) )
+import Text.HTML.TagSoup
 
 {- | 'extractArticlesGamesIndustry' takes a Text containing an HTML document and extracts a list of 'Article's from it.
 It uses 'extractArticleFromNode' internally to parse individual articles.
@@ -33,5 +34,18 @@ extractArticlesGamesIndustry html = do
       let contentText = unwords contentNodes
 
       case (titleNodeMaybe, urlNodeMaybe) of
-        (Just titleNode, Just urlNode) -> Just $ MkArticle titleNode urlNode contentText
+        (Just titleNode, Just urlNode) -> Just $ Article titleNode urlNode contentText
         _ -> Nothing
+
+parseGamesIndustryArticle :: Text -> [Tag Text] -> Maybe Article
+parseGamesIndustryArticle url tags = do
+  titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
+  contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
+
+  titleTag <- viaNonEmpty head titleTags
+  contentTag <- viaNonEmpty head contentTags
+
+  let titleText = innerText [titleTag]
+  let contentText = innerText [contentTag]
+
+  return $ Article titleText url contentText
