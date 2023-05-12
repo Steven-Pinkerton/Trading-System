@@ -28,7 +28,6 @@ import Text.XML.Cursor (
   attributeIs,
   content,
   element,
-  fromDocument,
   ($//),
   (&/),
   (&//),

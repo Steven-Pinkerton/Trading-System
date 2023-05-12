@@ -37,7 +37,7 @@ extractArticlesGamesIndustry html = do
         _ -> Nothing
 
 parseGamesIndustryArticle :: Text -> [Tag Text] -> Maybe Article
-parseGamesIndustryArticle url tags = do
+parseGamesIndustryArticle url' tags = do
   titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
   contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
 
@@ -47,14 +47,14 @@ parseGamesIndustryArticle url tags = do
   let titleText = innerText [titleTag]
   let contentText = innerText [contentTag]
 
-  return $ Article titleText url contentText
+  return $ Article titleText url' contentText
 
 
 -- | 'fetchArticleContent' takes a URL as input and fetches the HTML content of the page.
 fetchGamesIndustyArticleContent :: String -> IO (Maybe Text)
-fetchGamesIndustyArticleContent url = do
+fetchGamesIndustyArticleContent url' = do
   manager <- newManager defaultManagerSettings
-  request <- parseRequest url
+  request <- parseRequest url'
   response <- httpLbs request manager
   let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
   return $ extractContent cursor
