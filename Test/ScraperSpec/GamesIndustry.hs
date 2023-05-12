@@ -26,7 +26,7 @@ spec = do
     it "extracts the correct content from the Meta article" $ do
       metaUrlLBS <- readFileLBS "test_data/meta.url"
       let metaUrl = toString . TLE.decodeUtf8 $ metaUrlLBS
-      metaContent <- fetchArticleContent metaUrl
+      metaContent <- fetchGamesIndustyArticleContent metaUrl
       expectedContentJson <- readFileLBS "expected_test_results/meta.expected.json"
       let expectedContent = decode expectedContentJson
       metaContent `shouldBe` expectedContent
