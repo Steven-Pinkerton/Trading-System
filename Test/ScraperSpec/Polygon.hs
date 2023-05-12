@@ -26,6 +26,7 @@ spec = do
       let expectedArticles = decode expectedArticlesBytes :: Maybe [Article] -- specify the type as Maybe [Article]
       -- Check if the extracted articles match the expected articles.
       articles `shouldBe` fromJust expectedArticles -- use fromJust to extract the value from Maybe
+  
   describe "parsePolygonArticle" $ do
     it "parses the correct article from Polygon's individual article page" $ do
       -- Load the sample article page HTML.
