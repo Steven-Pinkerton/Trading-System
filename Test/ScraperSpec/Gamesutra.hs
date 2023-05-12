@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Scraper.Gamesutra where
+module ScraperSpec.Gamesutra where
 
 import Common (Article (..))
 import Data.Text.Lazy.Encoding qualified as LE

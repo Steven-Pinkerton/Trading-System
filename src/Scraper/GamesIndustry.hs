@@ -1,6 +1,7 @@
 module Scraper.GamesIndustry (
   extractArticlesGamesIndustry,
-) where
+  parseGamesIndustryArticle,
+  fetchGamesIndustyArticleContent) where
 
 import qualified Text.XML.Cursor as Cursor
 
@@ -8,6 +9,10 @@ import Text.XML ( parseLBS, def )
 import Text.XML.Cursor (fromDocument, ($//), (&/))
 import Common (Article(..) )
 import Text.HTML.TagSoup
+    ( sections, isTagOpenName, innerText, Tag )
+import Network.HTTP.Client (Response (responseBody), defaultManagerSettings, httpLbs, newManager, parseRequest)
+import Text.HTML.DOM (parseLBS)
+import Scraper.Parsers ( extractContent )
 
 {- | 'extractArticlesGamesIndustry' takes a Text containing an HTML document and extracts a list of 'Article's from it.
 It uses 'extractArticleFromNode' internally to parse individual articles.
@@ -18,18 +23,12 @@ extractArticlesGamesIndustry html = do
         Left _ -> error "Failed to parse HTML"
         Right d -> d
   let cursor = fromDocument doc
-  let articleNodes = cursor $// Cursor.element "div" >=> Cursor.attributeIs "class" "summary"
+  let articleNodes = cursor $// Cursor.element "div" >=> Cursor.attributeIs "class" "article_body"
   mapMaybe extractArticleFromNode articleNodes
   where
-    -- \| 'extractArticleFromNode' is a local helper function for 'extractArticlesGamesIndustry'.
-    --     It takes an 'articleNode' as input, which is a cursor pointing to an individual article
-    --     in the HTML structure. The function extracts the title, URL, and content from the node
-    --     and returns a 'Maybe Article'. If the title and URL can be extracted successfully, it
-    --     returns 'Just Article'; otherwise, it returns 'Nothing'.
-    --
     extractArticleFromNode articleNode = do
-      let titleNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "title")
-      let urlNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "href")
+      let titleNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "title" &/ Cursor.content)
+      let urlNodeMaybe = viaNonEmpty head (articleNode $// Cursor.element "a" >=> Cursor.attribute "href") -- adjust if necessary
       let contentNodes = articleNode $// Cursor.element "p" &/ Cursor.content
       let contentText = unwords contentNodes
 
@@ -49,3 +48,13 @@ parseGamesIndustryArticle url tags = do
   let contentText = innerText [contentTag]
 
   return $ Article titleText url contentText
+
+
+-- | 'fetchArticleContent' takes a URL as input and fetches the HTML content of the page.
+fetchGamesIndustyArticleContent :: String -> IO (Maybe Text)
+fetchGamesIndustyArticleContent url = do
+  manager <- newManager defaultManagerSettings
+  request <- parseRequest url
+  response <- httpLbs request manager
+  let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
+  return $ extractContent cursor

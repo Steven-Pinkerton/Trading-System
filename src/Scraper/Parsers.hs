@@ -6,7 +6,6 @@
 module Scraper.Parsers (
   parseArticle,
   extractArticles,
-  fetchArticleContent,
   extractContent,
 ) where
 
@@ -14,8 +13,6 @@ import Data.ByteString.Lazy ()
 import Data.Text (intercalate)
 import Data.Text.Encoding ()
 import Data.Text.Lazy.Encoding ()
-import Network.HTTP.Client (Response (responseBody), defaultManagerSettings, httpLbs, newManager, parseRequest)
-import Text.HTML.DOM (parseLBS)
 
 import Common (Article (..))
 import Text.HTML.TagSoup (
@@ -61,15 +58,6 @@ extractArticles html =
       articleSections = sections (Text.HTML.TagSoup.isTagOpenName "article") tags
       articles = mapMaybe (`parseArticle` Article) articleSections
    in articles
-
--- | 'fetchArticleContent' takes a URL as input and fetches the HTML content of the page.
-fetchArticleContent :: String -> IO (Maybe Text)
-fetchArticleContent url = do
-  manager <- newManager defaultManagerSettings
-  request <- parseRequest url
-  response <- httpLbs request manager
-  let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
-  return $ extractContent cursor
 
 -- | 'extractContent' takes a 'Cursor' pointing to the root of an HTML document and extracts the main content.
 extractContent :: Cursor -> Maybe Text

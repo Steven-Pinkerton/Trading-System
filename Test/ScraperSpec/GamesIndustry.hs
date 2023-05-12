@@ -1,11 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Scraper.GamesIndustry where
+module ScraperSpec.GamesIndustry where
 
 import Data.Aeson (decode)
 import Data.Text.Lazy.Encoding qualified as TLE
-import Scraper.Parsers (fetchArticleContent)
 import Test.Hspec (Spec, describe, hspec, it, shouldBe)
+import Scraper.GamesIndustry (fetchGamesIndustyArticleContent)
+
+
 
 main :: IO ()
 main = hspec spec
@@ -16,7 +18,7 @@ spec = do
     it "extracts the correct content from the Mario article" $ do
       marioUrlLBS <- readFileLBS "test_data/mario.url"
       let marioUrl = toString . TLE.decodeUtf8 $ marioUrlLBS
-      marioContent <- fetchArticleContent marioUrl
+      marioContent <- fetchGamesIndustyArticleContent marioUrl
       expectedContentJson <- readFileLBS "expected_test_results/mario.expected.json"
       let expectedContent = decode expectedContentJson
       marioContent `shouldBe` expectedContent
