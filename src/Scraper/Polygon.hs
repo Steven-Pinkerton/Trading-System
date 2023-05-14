@@ -1,19 +1,28 @@
 module Scraper.Polygon (
   extractArticlesPolygon,
   parsePolygonArticle,
-) where
+fetchPolygonArticleContent) where
 
 import Text.XML.Cursor qualified as Cursor
 
 import Common (Article (..))
-import Text.HTML.TagSoup (
-  Tag,
-  innerText,
-  isTagOpenName,
-  sections,
- )
+import Network.HTTP.Simple (getResponseBody, httpLbs, parseRequest)
 import Text.XML (def, parseLBS)
-import Text.XML.Cursor (fromDocument, ($//), (&/))
+import Text.XML.Cursor
+    ( fromDocument,
+      ($//),
+      (&/),
+      fromDocument,
+      element,
+      ($//),
+      (&/),
+      element,
+      fromDocument,
+      ($//),
+      (&/), Cursor )
+import qualified Text.HTML.DOM as HTML_DOM
+
+
 
 -- | Extracts articles from Polygon's index page HTML text.
 extractArticlesPolygon :: Text -> [Article]
@@ -51,20 +60,24 @@ extractArticlesPolygon html = do
         _ -> Nothing
 
 -- | Parses an article from Polygon's individual article page HTML text.
-parsePolygonArticle :: Text -> [Tag Text] -> Maybe Article
-parsePolygonArticle url' tags = do
-  -- Find the title tags.
-  titleTags <- viaNonEmpty head (sections (isTagOpenName "title") tags)
-  -- Find the content tags.
-  contentTags <- viaNonEmpty head (sections (isTagOpenName "p") tags)
+parsePolygonArticle :: Text -> Cursor -> Maybe Article
+parsePolygonArticle url' cursor = do
+  -- Find the title and content nodes and get their content.
+  let titleNodes = cursor $// element "title" &/ Cursor.content
+  let contentNodes = cursor $// element "p" &/ Cursor.content
 
-  -- Get the first title tag and the first content tag.
-  titleTag <- viaNonEmpty head titleTags
-  contentTag <- viaNonEmpty head contentTags
+  let titleText = listToMaybe titleNodes
+  let contentText = unwords contentNodes
 
-  -- Get the text from the tags.
-  let titleText = innerText [titleTag]
-  let contentText = innerText [contentTag]
+  -- Return an article if all the necessary information was found.
+  case titleText of
+    Just title' -> Just $ Article title' url' contentText
+    _ -> Nothing
 
-  -- Return an article.
-  return $ Article titleText url' contentText
+
+fetchPolygonArticleContent :: Text -> IO (Maybe Article)
+fetchPolygonArticleContent url' = do
+  request <- parseRequest (toString url')
+  response <- httpLbs request
+  let cursor = fromDocument $ HTML_DOM.parseLBS (getResponseBody response)
+  return $ parsePolygonArticle url' cursor
