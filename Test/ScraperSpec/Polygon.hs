@@ -31,21 +31,6 @@ spec = do
   describe "parsePolygonArticle" $ do
     it "parses the correct article from Polygon's individual article page" $ do
       -- Load the sample article page HTML.
-      htmlBytes <- readFileLBS "test/html/polygon_article.html"
-      let html = LE.decodeUtf8 htmlBytes
-      -- Parse the article from the HTML.
-      let cursor = fromDocument $ HTML_DOM.parseLBS htmlBytes
-      let article = parsePolygonArticle "https://www.polygon.com/sample-article" cursor
-      -- Load the expected article.
-      expectedArticleBytes <- readFileLBS "test/expected/polygon_article.txt"
-      let expectedArticle = decode expectedArticleBytes :: Maybe Article -- specify the type as Maybe Article
-      -- Check if the parsed article matches the expected article.
-      article `shouldBe` expectedArticle -- Ensure the types match
-
-
-  describe "parsePolygonArticle" $ do
-    it "parses the correct article from Polygon's individual article page" $ do
-      -- Load the sample article page HTML.
       htmlBytes <- readFileLBS "test_data/sonic.html"
       -- Parse the article from the HTML.
       let cursor = fromDocument $ HTML_DOM.parseLBS htmlBytes
