@@ -1,4 +1,4 @@
-module Scraper.RockPaperShotgun (
+module Scraper.RPS (
   extractArticlesRPS,
   parseRPSArticle,
   fetchRPSArticleContent,
