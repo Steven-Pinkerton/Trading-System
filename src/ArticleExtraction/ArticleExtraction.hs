@@ -54,9 +54,9 @@ toHttpException someErr = HttpExceptionRequest defaultRequest (StatusCodeExcepti
         }
 -- | 'preprocessArticle' function takes an 'Article' and returns a preprocessed 'Article'.
 preprocessArticle :: Article -> Article
-preprocessArticle (MkArticle title' url' content') =
+preprocessArticle (Article title' url' content') =
   let preprocessedContent = preprocess content'
-   in MkArticle title' url' (unwords preprocessedContent)
+   in Article title' url' (unwords preprocessedContent)
 
 data Site = GamesIndustryBiz | OtherSite
 

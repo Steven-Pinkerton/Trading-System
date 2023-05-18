@@ -5,7 +5,7 @@ module ArticleExtraction.Article (
 
 import Data.Text qualified as T
 import Data.List ((!!))
-import Common (Article (MkArticle, title, url, content))
+import Common (Article (title, url, content, Article))
 
 -- | 'articleToText' function converts an 'Article' to 'Text'.
 articleToText :: Article -> Text
@@ -31,4 +31,4 @@ textToArticle text = do
   title' <- T.stripPrefix "Title: " titleLine
   url' <- T.stripPrefix "URL: " urlLine
   content' <- T.stripPrefix "Content: " contentLine
-  return $ MkArticle title' url' content'
+  return $ Article title' url' content'

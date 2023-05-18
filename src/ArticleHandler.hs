@@ -16,16 +16,18 @@ handleNewGamesIndustryArticle :: Text -> IO ()
 handleNewGamesIndustryArticle url = do
   isNew <- insertLinkIfNew url
   when isNew $ do
-    htmlContent <- fetchGamesIndustyArticleContent url
-    case htmlContent of
-      Just content -> do
+    result <- fetchGamesIndustryArticleContent url
+    case result of
+      Left error -> putStrLn $ "Error fetching the article content: " <> error
+      Right content -> do
         let tags = parseTags content
         case parseGamesIndustryArticle url tags of
+          Nothing -> putStrLn "Error parsing the article."
           Just article -> do
-            -- Handle the parsed article
-            print article -- For example, print the article
-          Nothing -> putStrLn "Error: Unable to parse the article."
-      Nothing -> putStrLn "Error: Unable to fetch the article content."
+            let preprocessedContent = preprocess (articleContent article)
+            -- TODO: Pass preprocessedContent to your Python sentiment analysis function
+            print preprocessedContent
+
 
 handleNewGamasutraArticle :: Text -> IO ()
 handleNewGamasutraArticle url = do
