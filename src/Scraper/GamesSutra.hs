@@ -5,43 +5,41 @@ module Scraper.GamesSutra (
   parseGamasutraArticle,
   extractGamasutraArticles,
   extractGamasutraTitle,
-  fetchGamasutraArticleContent
+  fetchGamasutraArticleContent,
 ) where
 
 import Common (Article (..))
+import Data.Text qualified
+import Network.HTTP.Client (Response (responseBody))
 import Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest)
 import Scraper.Parsers ()
+import Text.HTML.DOM qualified
+import Text.HTML.TagSoup (
+  Tag,
+  fromAttrib,
+  innerText,
+  isTagOpenName,
+  parseTags,
+  sections,
+ )
+import Text.XML.Cursor qualified as C
 import Prelude hiding (error)
-import Text.HTML.TagSoup
-    ( sections, parseTags, isTagOpenName, innerText, fromAttrib, Tag )
-import Text.XML.Cursor
-    ( (&//),
-      (&/),
-      ($//),
-      fromDocument,
-      element,
-      content,
-      attributeIs,
-      Cursor )
-import qualified Data.Text
-import qualified Text.HTML.DOM
-import Network.HTTP.Client ( Response(responseBody) )
 
 -- Fetches the HTML content of the article from the given URL.
 fetchGamasutraArticleContent :: Text -> IO (Either Text Text)
 fetchGamasutraArticleContent url' = do
   request <- parseRequest (toString url')
   response <- httpLBS request
-  let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
+  let cursor = C.fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
   return $ case parseGamasutra url' cursor of
-    Right article -> Right $ articleContent article
+    Right article -> Right $ content article
     Left error -> Left error
 
 fetchArticle :: Text -> IO (Either Text Article)
 fetchArticle url' = do
   request <- parseRequest (toString url')
   response <- httpLBS request
-  let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
+  let cursor = C.fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
   return $ parseGamasutra url' cursor
 
 fetchGamasutraArticles :: IO (Either Text [Article])
@@ -90,7 +88,8 @@ parseGamasutraUrls html =
     parseUrls tags =
       viaNonEmpty toList (fromAttrib "href" <$> concat (sections (isTagOpenName "section") tags))
 
-parseGamasutra :: Text -> Cursor -> Either Text Article
+
+parseGamasutra :: Text -> C.Cursor -> Either Text Article
 parseGamasutra url' cursor =
   let maybeTitle = extractGamasutraTitle cursor
       maybeContent = extractGamasutraContent cursor
@@ -98,14 +97,14 @@ parseGamasutra url' cursor =
         (Just title', Just content') -> Right $ Article title' url' content'
         _ -> Left "Failed to parse Gamasutra article"
 
-extractGamasutraContent :: Cursor -> Maybe Text
+extractGamasutraContent :: C.Cursor -> Maybe Text
 extractGamasutraContent cursor = do
-  let contentNodes = cursor $// element "div" >=> attributeIs "class" "article-content" &// element "p" &/ Text.XML.Cursor.content
-  let contentText = Data.Text.intercalate "\n" contentNodes
+  let contentNodes = cursor C.$// C.element "div" C.&| C.attributeIs "class" "article-content" C.&// C.element "p" C.&/ C.content
+  let contentText = Data.Text.intercalate "\n" $ map Data.Text.concat contentNodes
   return contentText
 
-extractGamasutraTitle :: Cursor -> Maybe Text
+extractGamasutraTitle :: C.Cursor -> Maybe Text
 extractGamasutraTitle cursor = do
-  let titleNodes = cursor $// element "h1" &/ Text.XML.Cursor.content
+  let titleNodes = cursor C.$// C.element "h1" C.&/ C.content
   let titleText = Data.Text.concat titleNodes
   return titleText

@@ -6,14 +6,19 @@
 
 module Database.Database where
 
-import Control.Monad.Logger (runStderrLoggingT)
+import Control.Monad.Logger (runStderrLoggingT, NoLoggingT)
 import Database.Persist.Postgresql
     ( BackendKey(SqlBackendKey),
       runSqlPersistMPool,
       SqlPersistT,
-      withPostgresqlPool, PersistUniqueRead (getBy), PersistStoreWrite (insert) )
+      withPostgresqlPool,
+      PersistUniqueRead(getBy),
+      PersistStoreWrite(insert),
+      runSqlPersistMPool,
+      withPostgresqlPool )
 import Database.Persist.TH
     ( mkMigrate, mkPersist, persistLowerCase, share, sqlSettings )
+import Control.Monad.Trans.Resource ( ResourceT )
 
 share
   [mkPersist sqlSettings, mkMigrate "migrateAll"]
@@ -33,16 +38,17 @@ Article
 
 connStr = "host=localhost dbname=test user=test password=test port=5432"
 
-runDB :: (MonadIO m) => SqlPersistT IO a -> m a
-runDB query = liftIO $ runStderrLoggingT $ withPostgresqlPool connStr 10 $ \pool -> liftIO $ runSqlPersistMPool query pool
+runDB :: SqlPersistT (NoLoggingT (ResourceT IO)) a -> IO a
+runDB query = runStderrLoggingT $
+  withPostgresqlPool connStr 10 $ \pool ->
+    liftIO $ runSqlPersistMPool query pool
 
-
-insertLinkIfNew :: Text -> IO Bool
-insertLinkIfNew url = runDB $ do
+insertLinkIfNew :: Text -> NewsSiteId -> IO Bool
+insertLinkIfNew url newsSiteId = runDB $ do
   mArticle <- getBy $ UniqueLink url
   case mArticle of
     Nothing -> do
       -- The article is new
-      _ <- insert $ Article "<title>" url
+      _ <- insert $ Article "<title>" url newsSiteId
       return True
     Just _ -> return False -- The article already exists
