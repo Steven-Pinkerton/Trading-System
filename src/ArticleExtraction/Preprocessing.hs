@@ -40,7 +40,7 @@ removeSpecialChars = T.filter isAlphaNum
 
 -- | 'stemWord' function takes a 'Text' and returns the stemmed 'Text'.
 stemWord :: Text -> Text
-stemWord word = toText (stem English (toString word))
+stemWord word = stem English (word :: Text) :: Text
 
 -- | 'removeStopwords' function takes a list of tokens and returns the list without stop words.
 removeStopwords :: [Text] -> [Text]

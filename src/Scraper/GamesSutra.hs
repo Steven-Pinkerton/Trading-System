@@ -5,6 +5,7 @@ module Scraper.GamesSutra (
   parseGamasutraArticle,
   extractGamasutraArticles,
   extractGamasutraTitle,
+  fetchGamasutraArticleContent
 ) where
 
 import Common (Article (..))
@@ -26,9 +27,16 @@ import qualified Data.Text
 import qualified Text.HTML.DOM
 import Network.HTTP.Client ( Response(responseBody) )
 
+-- Fetches the HTML content of the article from the given URL.
+fetchGamasutraArticleContent :: Text -> IO (Either Text Text)
+fetchGamasutraArticleContent url' = do
+  request <- parseRequest (toString url')
+  response <- httpLBS request
+  let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
+  return $ case parseGamasutra url' cursor of
+    Right article -> Right $ articleContent article
+    Left error -> Left error
 
--- Update the fetchArticle function
--- Now it takes a Text parameter and returns IO (Either Text Article).
 fetchArticle :: Text -> IO (Either Text Article)
 fetchArticle url' = do
   request <- parseRequest (toString url')
@@ -36,8 +44,6 @@ fetchArticle url' = do
   let cursor = fromDocument $ Text.HTML.DOM.parseLBS (responseBody response)
   return $ parseGamasutra url' cursor
 
--- Update the fetchGamasutraArticles function
--- Now it returns IO (Either Text [Article]).
 fetchGamasutraArticles :: IO (Either Text [Article])
 fetchGamasutraArticles = do
   request <- parseRequest "https://www.gamasutra.com"
@@ -47,8 +53,6 @@ fetchGamasutraArticles = do
     Left error -> return $ Left error
     Right urls -> sequenceA <$> traverse fetchArticle urls
 
-
--- | 'extractGamasutraArticles' takes an HTML Text and extracts a list of 'Article's specific to Gamasutra's website.
 parseGamasutraArticle :: Text -> [Tag Text] -> Maybe Article
 parseGamasutraArticle url' tags = do
   titleTags <- viaNonEmpty head (sections (isTagOpenName "h1") tags)
@@ -62,7 +66,6 @@ parseGamasutraArticle url' tags = do
 
   return $ Article titleText url' contentText
 
--- Update the extractGamasutraArticles function
 extractGamasutraArticles :: [Tag Text] -> [Article]
 extractGamasutraArticles tags =
   let articleSections = sections (isTagOpenName "article") tags
@@ -78,16 +81,15 @@ extractGamasutraArticles tags =
       parseWithUrl = parseGamasutraArticle
    in articles
 
--- Update the parseGamasutraUrls function
 parseGamasutraUrls :: Text -> Either Text [Text]
 parseGamasutraUrls html =
   let urls = parseUrls $ parseTags html
    in maybeToRight "Failed to parse Gamasutra URLs" urls
   where
     parseUrls :: [Tag Text] -> Maybe [Text]
-    parseUrls tags = viaNonEmpty toList (fromAttrib "href" <$> concat (sections (isTagOpenName "section") tags))
+    parseUrls tags =
+      viaNonEmpty toList (fromAttrib "href" <$> concat (sections (isTagOpenName "section") tags))
 
--- Update the parseGamasutra function
 parseGamasutra :: Text -> Cursor -> Either Text Article
 parseGamasutra url' cursor =
   let maybeTitle = extractGamasutraTitle cursor
@@ -96,7 +98,6 @@ parseGamasutra url' cursor =
         (Just title', Just content') -> Right $ Article title' url' content'
         _ -> Left "Failed to parse Gamasutra article"
 
--- | 'extractContent' takes a 'Cursor' pointing to the root of an HTML document and extracts the main content.
 extractGamasutraContent :: Cursor -> Maybe Text
 extractGamasutraContent cursor = do
   let contentNodes = cursor $// element "div" >=> attributeIs "class" "article-content" &// element "p" &/ Text.XML.Cursor.content

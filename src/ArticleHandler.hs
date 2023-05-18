@@ -6,11 +6,11 @@ module ArticleHandler (
   handleNewArticle,
 ) where
 
-import Control.Monad (when)
 import Database.Database (insertLinkIfNew)
-import Scraper.GamesIndustry (fetchGamesIndustyArticleContent, parseGamesIndustryArticle)
+import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent, parseGamasutraArticle)
 import Text.HTML.TagSoup (parseTags)
+import ArticleExtraction.Preprocessing
 
 handleNewGamesIndustryArticle :: Text -> IO ()
 handleNewGamesIndustryArticle url = do
