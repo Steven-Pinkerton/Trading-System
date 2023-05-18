@@ -103,7 +103,10 @@ common shared
     , bytestring
     , case-insensitive
     , scalpel
-    , stemmer
+    , snowball
+    , monad-logger
+    , persistent
+    , persistent-postgresql
 
   hs-source-dirs:     src
   default-language:   Haskell2010

@@ -6,7 +6,7 @@ module ArticleExtraction.Preprocessing (
 
 import Data.Char (isAlphaNum, isPunctuation)
 import Data.Text qualified as T
-import NLP.Stemmer (stem)
+import NLP.Snowball (stem, Algorithm (English))
 import NLP.Tokenize.Text (tokenize)
 import Text.HTML.TagSoup (innerText, parseTags)
 
@@ -40,7 +40,7 @@ removeSpecialChars = T.filter isAlphaNum
 
 -- | 'stemWord' function takes a 'Text' and returns the stemmed 'Text'.
 stemWord :: Text -> Text
-stemWord word = T.pack (stem English (T.unpack word))
+stemWord word = toText (stem English (toString word))
 
 -- | 'removeStopwords' function takes a list of tokens and returns the list without stop words.
 removeStopwords :: [Text] -> [Text]
