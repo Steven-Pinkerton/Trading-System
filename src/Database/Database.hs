@@ -15,7 +15,7 @@ import Database.Persist.Postgresql
       PersistUniqueRead(getBy),
       PersistStoreWrite(insert),
       runSqlPersistMPool,
-      withPostgresqlPool )
+      withPostgresqlPool, Entity (entityKey, entityVal), selectList )
 import Database.Persist.TH
     ( mkMigrate, mkPersist, persistLowerCase, share, sqlSettings )
 import Control.Monad.Trans.Resource ( ResourceT )
@@ -52,3 +52,29 @@ insertLinkIfNew url newsSiteId = runDB $ do
       _ <- insert $ Article "<title>" url newsSiteId
       return True
     Just _ -> return False -- The article already exists
+
+
+getNewsSiteId :: Text -> IO (Maybe NewsSiteId)
+getNewsSiteId siteName = runDB $ do
+  mNewsSite <- getBy $ UniqueName siteName
+  return $ fmap entityKey mNewsSite
+
+gamesIndustryId :: IO NewsSiteId
+gamesIndustryId = do
+  mId <- getNewsSiteId "gamesindustry"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find gamesindustry in the NewsSite table."
+
+gamesutraId :: IO NewsSiteId
+gamesutraId = do
+  mId <- getNewsSiteId "gamasutra"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find gamasutra in the NewsSite table."
+
+
+getAllLinks :: IO [Text]
+getAllLinks = runDB $ do
+  articles <- selectList [] []
+  return $ map (articleLink . entityVal) articles

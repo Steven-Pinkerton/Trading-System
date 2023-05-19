@@ -10,15 +10,17 @@ module ArticleHandler (
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Text (isInfixOf)
-import Database.Database (insertLinkIfNew)
+import Database.Database (insertLinkIfNew, NewsSiteId, gamesIndustryId, gamesutraId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
-import Scraper.GamesSutra (fetchGamasutraArticleContent, parseGamasutraArticle)
+import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Text.HTML.TagSoup (parseTags)
+import SentimentAnalysis.PythonScript
+    ( parseSentimentOutput, callPythonScript )
 
 
-handleNewGamesIndustryArticle :: Text -> IO ()
-handleNewGamesIndustryArticle url' = do
-  isNew <- insertLinkIfNew url'
+handleNewGamesIndustryArticle :: Text -> NewsSiteId -> IO ()
+handleNewGamesIndustryArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
   when isNew $ do
     result <- fetchGamesIndustryArticleContent url'
     case result of
@@ -28,27 +30,41 @@ handleNewGamesIndustryArticle url' = do
         case parseGamesIndustryArticle url' tags of
           Nothing -> putStrLn "Error parsing the article."
           Just article -> do
-            let preprocessedContent = preprocess (content article)
-            -- TODO: Pass preprocessedContent to your Python sentiment analysis function
-            print preprocessedContent
+            let preprocessedContent = unwords $ preprocess (content article)
+            rawSentimentOutput <- callPythonScript preprocessedContent
+            let sentiment = parseSentimentOutput rawSentimentOutput
+            print sentiment
 
-handleNewGamasutraArticle :: Text -> IO ()
-handleNewGamasutraArticle url' = do
-  isNew <- insertLinkIfNew url'
+handleNewGamasutraArticle :: Text -> NewsSiteId -> IO ()
+handleNewGamasutraArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
   when isNew $ do
     htmlContent <- fetchGamasutraArticleContent url'
     case htmlContent of
       Left error' -> putStrLn $ toString $ "Error fetching the article content: " <> error'
       Right content' -> do
-        let tags = parseTags content'
-        case parseGamasutraArticle url' tags of
-          Just article -> do
-            -- Handle the parsed article
-            print article -- For example, print the article
-          Nothing -> putStrLn "Error: Unable to parse the article."
+        let preprocessedContent = preprocess content' -- assuming preprocess function exists for this content type
+        rawSentimentOutput <- callPythonScript (unwords preprocessedContent)
+        let sentiment = parseSentimentOutput rawSentimentOutput
+        print sentiment
 
 handleNewArticle :: Text -> IO ()
-handleNewArticle url'
-  | "gamesindustry" `isInfixOf` url' = handleNewGamesIndustryArticle url'
-  | "gamasutra" `isInfixOf` url' = handleNewGamasutraArticle url'
-  | otherwise = putStrLn $ "Unknown website: " ++ toString url'
+handleNewArticle url' = do
+  maybeSiteId <- newsSiteIdFromUrl url'
+  case maybeSiteId of
+    Nothing -> putStrLn $ "Unknown website: " ++ toString url'
+    Just siteId ->
+      if "gamesindustry" `isInfixOf` url'
+        then handleNewGamesIndustryArticle url' siteId
+        else
+          if "gamasutra" `isInfixOf` url'
+            then handleNewGamasutraArticle url' siteId
+            else putStrLn $ "Unknown website: " ++ toString url'
+
+        
+newsSiteIdFromUrl :: Text -> IO (Maybe NewsSiteId)
+newsSiteIdFromUrl url'
+  | "gamesindustry" `isInfixOf` url' = Just <$> gamesIndustryId
+  | "gamasutra" `isInfixOf` url' = Just <$> gamesutraId
+  | otherwise = return Nothing
+
