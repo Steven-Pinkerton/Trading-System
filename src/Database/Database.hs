@@ -8,7 +8,7 @@
 module Database.Database where
 
 import Control.Monad.Logger (NoLoggingT, runNoLoggingT)
-import Control.Monad.Trans.Resource (ResourceT)
+import Control.Monad.Trans.Resource ( ResourceT, runResourceT )
 import Control.Retry (exponentialBackoff, retrying)
 import Database.Persist.Postgresql (
   BackendKey (SqlBackendKey),
@@ -28,7 +28,6 @@ import Database.Persist.TH (
  )
 import Prelude hiding (encodeUtf8)
 import qualified Data.Text.Encoding as Encoding
-import Control.Monad.Trans.Resource (runResourceT)
 
 share
   [mkPersist sqlSettings, mkMigrate "migrateAll"]
