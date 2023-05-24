@@ -9,6 +9,7 @@ module ArticleHandler (
 
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
+import Data.Map qualified as Map
 import Data.Text (isInfixOf)
 import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
@@ -19,62 +20,73 @@ import SentimentAnalysis.PythonScript (
  )
 import Text.HTML.TagSoup (parseTags)
 import TrendAnalysis.PythonScript (
-  callPythonTrendScript, -- To be implemented
+  callPythonTrendScript,
   parseTrendingOutput,
  )
 
+type WebsiteHandler = Text -> NewsSiteId -> IO ()
+
+websiteHandlers :: Map.Map Text WebsiteHandler
+websiteHandlers = Map.fromList [("gamesindustry", handleNewGamesIndustryArticle), ("gamasutra", handleNewGamasutraArticle)]
+
+-- This function processes a new article from GamesIndustry.
 handleNewGamesIndustryArticle :: Text -> NewsSiteId -> IO ()
 handleNewGamesIndustryArticle url' siteId = do
   isNew <- insertLinkIfNew url' siteId
   when isNew $ do
     result <- fetchGamesIndustryArticleContent url'
     case result of
-      Left error' -> putStrLn $ toString $ "Error fetching the article content: " <> error'
+      Left error' -> logError $ "Error fetching the article content: " <> error'
       Right content' -> do
         let tags = parseTags content'
         case parseGamesIndustryArticle url' tags of
-          Nothing -> putStrLn "Error parsing the article."
-          Just article -> do
-            let preprocessedContent = unwords $ preprocess (content article)
-            rawSentimentOutput <- callPythonScript preprocessedContent
-            let sentiment = parseSentimentOutput rawSentimentOutput
-            print sentiment
-            when (sentiment == "negative") $ do
-              rawTrendingOutput <- callPythonTrendScript url' preprocessedContent sentiment -- pass sentiment here
-              let trendingTopics = parseTrendingOutput rawTrendingOutput
-              print trendingTopics
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
 
-
+-- This function processes a new article from Gamasutra.
 handleNewGamasutraArticle :: Text -> NewsSiteId -> IO ()
 handleNewGamasutraArticle url' siteId = do
   isNew <- insertLinkIfNew url' siteId
   when isNew $ do
     htmlContent <- fetchGamasutraArticleContent url'
     case htmlContent of
-      Left error' -> putStrLn $ toString $ "Error fetching the article content: " <> error'
-      Right content' -> do
-        let preprocessedContent = preprocess content' -- assuming preprocess function exists for this content type
-        rawSentimentOutput <- callPythonScript (unwords preprocessedContent)
-        let sentiment = parseSentimentOutput rawSentimentOutput
-        print sentiment
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right content' -> analyzeSentimentAndTrends url' (unwords $ preprocess content')
 
+-- This function selects the right handler function for a new article based on its URL.
 handleNewArticle :: Text -> IO ()
 handleNewArticle url' = do
   maybeSiteId <- newsSiteIdFromUrl url'
   case maybeSiteId of
-    Nothing -> putStrLn $ "Unknown website: " ++ toString url'
-    Just siteId ->
-      if "gamesindustry" `isInfixOf` url'
-        then handleNewGamesIndustryArticle url' siteId
-        else
-          if "gamasutra" `isInfixOf` url'
-            then handleNewGamasutraArticle url' siteId
-            else putStrLn $ "Unknown website: " ++ toString url'
+    Nothing -> logError $ "Unknown website: " ++ toString url'
+    Just siteId -> do
+      handler <- Map.lookup (siteNameFromUrl url') websiteHandlers
+      case handler of
+        Nothing -> logError $ "No handler for website: " ++ toString url'
+        Just h -> h url' siteId
 
-        
+-- This function decides the right NewsSiteId for a URL.
 newsSiteIdFromUrl :: Text -> IO (Maybe NewsSiteId)
 newsSiteIdFromUrl url'
   | "gamesindustry" `isInfixOf` url' = Just <$> gamesIndustryId
   | "gamasutra" `isInfixOf` url' = Just <$> gamesutraId
   | otherwise = return Nothing
 
+-- This function logs an error message.
+logError :: String -> IO ()
+logError = putStrLn -- Replace with more sophisticated logging in the future
+
+-- This function runs sentiment analysis and trend analysis on the preprocessed content of an article.
+analyzeSentimentAndTrends :: Text -> Text -> IO ()
+analyzeSentimentAndTrends url' preprocessedContent = do
+  rawSentimentOutput <- callPythonScript preprocessedContent
+  let sentiment = parseSentimentOutput rawSentimentOutput
+  print sentiment
+  when (sentiment == "negative") $ do
+    rawTrendingOutput <- callPythonTrendScript url' preprocessedContent sentiment
+    let trendingTopics = parseTrendingOutput rawTrendingOutput
+    print trendingTopics
+
+-- Note: This function should be implemented to extract the website name from a URL.
+siteNameFromUrl :: Text -> Text
+siteNameFromUrl = undefined
