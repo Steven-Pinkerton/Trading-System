@@ -1,14 +1,25 @@
 module Main where
 
-import Main.Utf8 qualified as Utf8
+-- assuming migrateAll is an available function
+-- assuming pollSites is a function that polls the websites
+import ArticleHandler (handleNewArticle)
+import Database.Database (migrateAll, runDB)
+import Polling.Polling (pollSites)
 
-{- |
- Main entry point.
-
- The `, run` script will invoke this function.
--}
 main :: IO ()
 main = do
-  -- For withUtf8, see https://serokell.io/blog/haskell-with-utf8
-  Utf8.withUtf8 $ do
-    putTextLn "Hello 🌎"
+  putStrLn "Starting up..."
+
+  -- Initialize and migrate your database
+  putStrLn "Initializing database..."
+  runDB migrateAll
+
+  -- Poll your sites for new articles
+  putStrLn "Polling sites for new articles..."
+  newArticles <- pollSites -- pollSites would be a function that returns a list of new article URLs
+
+  -- Handle the new articles
+  putStrLn "Processing new articles..."
+  mapM_ handleNewArticle newArticles
+
+  putStrLn "All done!"
