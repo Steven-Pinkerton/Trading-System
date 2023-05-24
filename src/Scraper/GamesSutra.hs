@@ -27,7 +27,6 @@ import Data.ByteString.Lazy qualified as L -- Used for dealing with ByteStrings 
 import Data.Text qualified as T
 import Network.HTTP.Client (Response (responseBody))
 import Network.HTTP.Simple (getResponseBody, httpLBS, parseRequest)
-import Scraper.Parsers ()
 import Text.HTML.DOM qualified
 import Text.HTML.TagSoup (
   Tag,
