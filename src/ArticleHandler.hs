@@ -10,13 +10,18 @@ module ArticleHandler (
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Text (isInfixOf)
-import Database.Database (insertLinkIfNew, NewsSiteId, gamesIndustryId, gamesutraId)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
+import SentimentAnalysis.PythonScript (
+  callPythonScript,
+  parseSentimentOutput,
+ )
 import Text.HTML.TagSoup (parseTags)
-import SentimentAnalysis.PythonScript
-    ( parseSentimentOutput, callPythonScript )
-
+import TrendAnalysis.PythonScript (
+  callPythonTrendScript, -- To be implemented
+  parseTrendingOutput,
+ )
 
 handleNewGamesIndustryArticle :: Text -> NewsSiteId -> IO ()
 handleNewGamesIndustryArticle url' siteId = do
@@ -34,6 +39,11 @@ handleNewGamesIndustryArticle url' siteId = do
             rawSentimentOutput <- callPythonScript preprocessedContent
             let sentiment = parseSentimentOutput rawSentimentOutput
             print sentiment
+            when (sentiment == "negative") $ do
+              rawTrendingOutput <- callPythonTrendScript url' preprocessedContent sentiment -- pass sentiment here
+              let trendingTopics = parseTrendingOutput rawTrendingOutput
+              print trendingTopics
+
 
 handleNewGamasutraArticle :: Text -> NewsSiteId -> IO ()
 handleNewGamasutraArticle url' siteId = do
