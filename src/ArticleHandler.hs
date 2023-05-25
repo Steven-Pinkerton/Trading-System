@@ -15,6 +15,7 @@ import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIf
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
+import Scraper.RSP (fetchRPSArticleContent, parseRPSArticle)
 import SentimentAnalysis.PythonScript (
   callPythonScript,
   parseSentimentOutput,
@@ -34,6 +35,7 @@ websiteHandlers =
     [ ("gamesindustry", handleNewGamesIndustryArticle)
     , ("gamasutra", handleNewGamasutraArticle)
     , ("polygon", handleNewPolygonArticle)
+    , ("rockpapershotgun", handleNewRPSArticle) -- Add this line
     ]
 
 -- This function processes a new article from GamesIndustry.
@@ -79,7 +81,8 @@ newsSiteIdFromUrl :: Text -> IO (Maybe NewsSiteId)
 newsSiteIdFromUrl url'
   | "gamesindustry" `isInfixOf` url' = Just <$> gamesIndustryId
   | "gamasutra" `isInfixOf` url' = Just <$> gamesutraId
-  | "polygon" `isInfixOf` url' = Just <$> polygonId -- you will need to define polygonId
+  | "polygon" `isInfixOf` url' = Just <$> polygonId
+  | "rockpapershotgun" `isInfixOf` url' = Just <$> rpsId -- Add this line
   | otherwise = return Nothing
 
 -- This function logs an error message.
@@ -104,8 +107,8 @@ siteNameFromUrl url'
   | "gamesindustry" `isInfixOf` url' = "gamesindustry"
   | "gamasutra" `isInfixOf` url' = "gamasutra"
   | "polygon" `isInfixOf` url' = "polygon"
+  | "rockpapershotgun" `isInfixOf` url' = "rockpapershotgun" -- Add this line
   | otherwise = "unknown"
-
 
 -- This function processes a new article from Polygon.
 handleNewPolygonArticle :: Text -> NewsSiteId -> IO ()
@@ -121,3 +124,17 @@ handleNewPolygonArticle url' siteId = do
         case articles of
           [] -> logError "Error parsing the article."
           (article : _) -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+-- This function processes a new article from RPS.
+handleNewRPSArticle :: Text -> NewsSiteId -> IO ()
+handleNewRPSArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    result <- fetchRPSArticleContent url'
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right content' -> do
+        let tags = parseTags content'
+        case parseRPSArticle url' tags of
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))

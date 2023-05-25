@@ -1,4 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use newtype instead of data" #-}
 
 module Scraper.RPS (
   extractArticlesRPS,
@@ -8,27 +11,25 @@ module Scraper.RPS (
 
 import Common (Article (..))
 import Control.Exception (try)
-import Network.HTTP.Client (HttpException)
-import Network.HTTP.Simple (getResponseBody, httpLbs, parseRequest)
-import Text.HTML.DOM qualified as HTML_DOM
-import Text.XML (def, parseLBS)
-import Text.XML.Cursor (
-  Cursor,
-  element,
-  fromDocument,
-  ($//),
-  (&/),
-  (&//),
- )
+import Data.ByteString.Lazy qualified as LBS
+import Network.HTTP.Client (HttpException, defaultManagerSettings, httpLbs, newManager, parseRequest, responseBody)
+import Text.HTML.DOM qualified as HTML
+import Text.XML (def)
+import Text.XML qualified as XML
+import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
 import Text.XML.Cursor qualified as Cursor
 
-newtype URL = URL Text
+data URL = URL Text deriving (Show)
+
+-- Helper function to extract URL Text
+getUrl :: URL -> Text
+getUrl (URL url) = url
 
 -- | Extracts articles from Rock Paper Shotgun's index page HTML text.
 extractArticlesRPS :: Text -> IO [Article]
 extractArticlesRPS html = do
   -- Parse the HTML text into an XML document.
-  let docEither = Text.XML.parseLBS def (encodeUtf8 html)
+  let docEither = XML.parseLBS def (encodeUtf8 html)
   case docEither of
     Left _ -> return []
     Right doc -> do
@@ -83,19 +84,24 @@ parseRPSArticle (URL url') cursor = do
     Just title' -> Just $ Article title' url' contentText
     _ -> Nothing
 
--- | Fetches the content of an individual article page from Rock Paper Shotgun and
--- parses it into an 'Article' object.
-fetchRPSArticleContent :: URL -> IO (Maybe Article)
-fetchRPSArticleContent (URL url') = do
+{- | Fetches the content of an individual article page from Rock Paper Shotgun and
+ parses it into an 'Article' object.
+-}
+fetchRPSArticleContent :: URL -> IO (Either HttpException (Maybe Article))
+fetchRPSArticleContent url' = do
   -- Parse the URL into a request.
-  req <- parseRequest (toString url')
+  req <- parseRequest (toString (getUrl url'))
+
+  -- Create a manager for HTTP requests
+  manager <- newManager defaultManagerSettings
 
   -- Send the HTTP request and get the response, handling potential HTTP exceptions.
-  resEither <- (try :: IO a -> IO (Either HttpException a)) $ httpLbs req
+  resEither <- (try :: IO a -> IO (Either HttpException a)) $ httpLbs req manager
 
   -- Depending on whether the HTTP request was successful or not, parse the response body into an XML document.
-  return $ either (const Nothing) parseResponseBody resEither
+  return $ fmap (parseResponseBody . responseBody) resEither
   where
+    parseResponseBody :: LBS.ByteString -> Maybe Article
     parseResponseBody response =
-      let cursor = fromDocument $ HTML_DOM.parseLBS (getResponseBody response)
-      in parseRPSArticle (URL url') cursor
+      let cursor = fromDocument $ HTML.parseLBS response
+       in parseRPSArticle url' cursor
