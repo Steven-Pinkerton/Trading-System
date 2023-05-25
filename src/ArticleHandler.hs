@@ -24,7 +24,7 @@ import TrendAnalysis.PythonScript (
   callPythonTrendScript,
   parseTrendingOutput,
  )
-import SentimentAnalysis.Sentiment
+import SentimentAnalysis.Sentiment ( sentimentToText )
 
 type WebsiteHandler = Text -> NewsSiteId -> IO ()
 
