@@ -14,6 +14,7 @@ import Data.Text (isInfixOf)
 import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
+import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
 import SentimentAnalysis.PythonScript (
   callPythonScript,
   parseSentimentOutput,
@@ -27,7 +28,12 @@ import TrendAnalysis.PythonScript (
 type WebsiteHandler = Text -> NewsSiteId -> IO ()
 
 websiteHandlers :: Map.Map Text WebsiteHandler
-websiteHandlers = Map.fromList [("gamesindustry", handleNewGamesIndustryArticle), ("gamasutra", handleNewGamasutraArticle)]
+websiteHandlers =
+  Map.fromList
+    [ ("gamesindustry", handleNewGamesIndustryArticle)
+    , ("gamasutra", handleNewGamasutraArticle)
+    , ("polygon", handleNewPolygonArticle)
+    ]
 
 -- This function processes a new article from GamesIndustry.
 handleNewGamesIndustryArticle :: Text -> NewsSiteId -> IO ()
@@ -70,6 +76,7 @@ newsSiteIdFromUrl :: Text -> IO (Maybe NewsSiteId)
 newsSiteIdFromUrl url'
   | "gamesindustry" `isInfixOf` url' = Just <$> gamesIndustryId
   | "gamasutra" `isInfixOf` url' = Just <$> gamesutraId
+  | "polygon" `isInfixOf` url' = Just <$> polygonId -- you will need to define polygonId
   | otherwise = return Nothing
 
 -- This function logs an error message.
@@ -89,4 +96,24 @@ analyzeSentimentAndTrends url' preprocessedContent = do
 
 -- Note: This function should be implemented to extract the website name from a URL.
 siteNameFromUrl :: Text -> Text
-siteNameFromUrl = undefined
+siteNameFromUrl url
+  | "gamesindustry" `isInfixOf` url = "gamesindustry"
+  | "gamasutra" `isInfixOf` url = "gamasutra"
+  | "polygon" `isInfixOf` url = "polygon"
+  | otherwise = "unknown"
+
+
+-- This function processes a new article from Polygon.
+handleNewPolygonArticle :: Text -> NewsSiteId -> IO ()
+handleNewPolygonArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    result <- fetchPolygonArticleContent url'
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right content' -> do
+        let tags = parseTags content'
+        let articles = extractPolygonArticles url' tags
+        case articles of
+          [] -> logError "Error parsing the article."
+          (article : _) -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
