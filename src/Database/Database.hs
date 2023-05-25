@@ -87,6 +87,14 @@ gamesutraId = do
     Just id' -> return id'
     Nothing -> error "Unable to find gamasutra in the NewsSite table."
 
+
+rpsId :: IO NewsSiteId
+rpsId = do
+  mId <- getNewsSiteIdWithRetry "rockpapershotgun"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find rockpapershotgun in the NewsSite table."
+
 getAllLinks :: IO [Text]
 getAllLinks = runDB $ do
   articles <- selectList [] []
@@ -98,7 +106,6 @@ polygonId = do
   case mId of
     Just id' -> return id'
     Nothing -> error "Unable to find polygon in the NewsSite table."
-
 
 linkExists :: Text -> IO Bool
 linkExists link = runDB $ do
