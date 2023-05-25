@@ -10,8 +10,8 @@ module ArticleHandler (
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
-import Data.Text (isInfixOf)
-import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew)
+import Data.Text (isInfixOf, unpack)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
@@ -24,6 +24,7 @@ import TrendAnalysis.PythonScript (
   callPythonTrendScript,
   parseTrendingOutput,
  )
+import SentimentAnalysis.Sentiment
 
 type WebsiteHandler = Text -> NewsSiteId -> IO ()
 
@@ -64,12 +65,14 @@ handleNewArticle :: Text -> IO ()
 handleNewArticle url' = do
   maybeSiteId <- newsSiteIdFromUrl url'
   case maybeSiteId of
-    Nothing -> logError $ "Unknown website: " ++ toString url'
-    Just siteId -> do
-      handler <- Map.lookup (siteNameFromUrl url') websiteHandlers
-      case handler of
-        Nothing -> logError $ "No handler for website: " ++ toString url'
-        Just h -> h url' siteId
+    Nothing -> logError $ "Unknown website: " <> url'
+    Just siteId ->
+      let handler = Map.lookup (siteNameFromUrl url') websiteHandlers
+       in maybe
+            (logError $ "No handler for website: " <> url')
+            (\h -> h url' siteId)
+            handler
+
 
 -- This function decides the right NewsSiteId for a URL.
 newsSiteIdFromUrl :: Text -> IO (Maybe NewsSiteId)
@@ -80,8 +83,8 @@ newsSiteIdFromUrl url'
   | otherwise = return Nothing
 
 -- This function logs an error message.
-logError :: String -> IO ()
-logError = putStrLn -- Replace with more sophisticated logging in the future
+logError :: Text -> IO ()
+logError = putStrLn . toString -- Assuming unpack is imported from Data.Text
 
 -- This function runs sentiment analysis and trend analysis on the preprocessed content of an article.
 analyzeSentimentAndTrends :: Text -> Text -> IO ()
@@ -89,10 +92,11 @@ analyzeSentimentAndTrends url' preprocessedContent = do
   rawSentimentOutput <- callPythonScript preprocessedContent
   let sentiment = parseSentimentOutput rawSentimentOutput
   print sentiment
-  when (sentiment == "negative") $ do
-    rawTrendingOutput <- callPythonTrendScript url' preprocessedContent sentiment
+  when (sentimentToText sentiment == "negative") $ do
+    rawTrendingOutput <- callPythonTrendScript url' preprocessedContent (show sentiment) -- Using show to convert Sentiment to String
     let trendingTopics = parseTrendingOutput rawTrendingOutput
     print trendingTopics
+
 
 -- Note: This function should be implemented to extract the website name from a URL.
 siteNameFromUrl :: Text -> Text

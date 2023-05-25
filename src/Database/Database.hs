@@ -91,3 +91,10 @@ getAllLinks :: IO [Text]
 getAllLinks = runDB $ do
   articles <- selectList [] []
   return $ map (articleLink . entityVal) articles
+
+polygonId :: IO NewsSiteId
+polygonId = do
+  mId <- getNewsSiteIdWithRetry "polygon"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find polygon in the NewsSite table."
