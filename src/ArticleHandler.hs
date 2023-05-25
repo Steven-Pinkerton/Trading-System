@@ -100,10 +100,10 @@ analyzeSentimentAndTrends url' preprocessedContent = do
 
 -- Note: This function should be implemented to extract the website name from a URL.
 siteNameFromUrl :: Text -> Text
-siteNameFromUrl url
-  | "gamesindustry" `isInfixOf` url = "gamesindustry"
-  | "gamasutra" `isInfixOf` url = "gamasutra"
-  | "polygon" `isInfixOf` url = "polygon"
+siteNameFromUrl url'
+  | "gamesindustry" `isInfixOf` url' = "gamesindustry"
+  | "gamasutra" `isInfixOf` url' = "gamasutra"
+  | "polygon" `isInfixOf` url' = "polygon"
   | otherwise = "unknown"
 
 
