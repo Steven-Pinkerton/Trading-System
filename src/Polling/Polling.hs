@@ -3,19 +3,16 @@ module Polling (startPolling) where
 import ArticleHandler (handleNewArticle)
 import Control.Concurrent (threadDelay)
 import Control.Concurrent.Async (forConcurrently_)
-import Control.Exception
-import Data.ByteString (ByteString)
-import Data.Text as T (Text, pack, unpack)
+import Control.Exception (catch)
 import Database.Database (getNewsSiteId, insertLinkIfNew, linkExists)
-import Network.HTTP.Conduit (HttpException, httpBS)
-import Relude (ConvertUtf8 (decodeUtf8))
+import Network.HTTP.Simple (HttpException, Response, getResponseBody, httpBS, parseRequest)
 import Text.HTML.TagSoup (fromAttrib, isTagOpenName, parseTags)
 
 -- Define exception handler for network errors
-networkHandler :: HttpException -> IO ByteString
+networkHandler :: HttpException -> IO (Maybe (Response ByteString))
 networkHandler e = do
   putStrLn $ "Network error: " ++ show e
-  return ""
+  return Nothing
 
 -- Define generic exception handler for all other errors
 anyExceptionHandler :: SomeException -> IO ()
@@ -23,30 +20,33 @@ anyExceptionHandler e = putStrLn $ "An error occurred: " ++ show e
 
 startPolling :: [Text] -> [Text] -> IO ()
 startPolling sites urls = forConcurrently_ urls $ \url -> runInfinitely $ do
-  -- Try to perform an HTTP request and use our defined handler in case of a network error
-  response <- (httpBS . toString $ url) `catch` networkHandler
-  let tags = parseTags (getResponseBody response)
-      links =
-        [  toText . Relude.decodeUtf8 $ fromAttrib "href" tag
-        | tag <- tags
-        , isTagOpenName "a" tag
-        ]
+  request <- parseRequest (toString url)
+  maybeResponse <- (Just <$> httpBS request) `catch` networkHandler
+  case maybeResponse of
+    Nothing -> putStrLn "Failed to get response."
+    Just response -> do
+      let tags = parseTags (getResponseBody response)
+          links =
+            [ toText . toString $ (decodeUtf8 @Text $ fromAttrib "href" tag)
+            | tag <- tags
+            , isTagOpenName "a" tag
+            ]
 
-  -- Check in the database whether each link already exists and filter out those that do
-  newLinks <- filterM (fmap not . linkExists . toString) links
+      -- Check in the database whether each link already exists and filter out those that do
+      newLinks <- filterM (fmap not . linkExists) links
 
-  -- Save new links in the database and run callback
-  forM_ newLinks $ \link -> do
-    let siteName = viaNonEmpty head sites -- Safe head operation
-    case siteName of
-      Nothing -> putStrLn "No site provided."
-      Just site -> do
-        siteId <- getNewsSiteId (toString site)
-        case siteId of
-          Nothing -> putStrLn $ "Site not found in the database: " ++ toString site
-          Just siteId' -> do
-            _ <- insertLinkIfNew (toString link) siteId'
-            handleNewArticle (toString link)
+      -- Save new links in the database and run callback
+      forM_ newLinks $ \link -> do
+        let siteName = viaNonEmpty head sites -- Safe head operation
+        case siteName of
+          Nothing -> putStrLn "No site provided."
+          Just site -> do
+            siteId <- getNewsSiteId site
+            case siteId of
+              Nothing -> putStrLn $ "Site not found in the database: " ++ toString site
+              Just siteId' -> do
+                _ <- insertLinkIfNew link siteId'
+                handleNewArticle link
 
   -- Wait for a while before polling the same site again
   threadDelay (60 * 60 * 1000000) -- 1 hour

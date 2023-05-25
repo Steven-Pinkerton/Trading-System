@@ -98,3 +98,11 @@ polygonId = do
   case mId of
     Just id' -> return id'
     Nothing -> error "Unable to find polygon in the NewsSite table."
+
+
+linkExists :: Text -> IO Bool
+linkExists link = runDB $ do
+  mArticle <- getBy $ UniqueLink link
+  case mArticle of
+    Nothing -> return False -- The article doesn't exist
+    Just _ -> return True -- The article exists

@@ -10,7 +10,7 @@ module ArticleHandler (
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
-import Data.Text (isInfixOf, unpack)
+import Data.Text (isInfixOf)
 import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
