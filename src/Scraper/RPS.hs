@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Scraper.RPS (
   extractArticlesRPS,
   parseRPSArticle,
@@ -5,6 +7,8 @@ module Scraper.RPS (
 ) where
 
 import Common (Article (..))
+import Control.Exception (try)
+import Network.HTTP.Client (HttpException)
 import Network.HTTP.Simple (getResponseBody, httpLbs, parseRequest)
 import Text.HTML.DOM qualified as HTML_DOM
 import Text.XML (def, parseLBS)
@@ -18,22 +22,24 @@ import Text.XML.Cursor (
  )
 import Text.XML.Cursor qualified as Cursor
 
+newtype URL = URL Text
+
 -- | Extracts articles from Rock Paper Shotgun's index page HTML text.
-extractArticlesRPS :: Text -> [Article]
+extractArticlesRPS :: Text -> IO [Article]
 extractArticlesRPS html = do
   -- Parse the HTML text into an XML document.
-  let doc = case Text.XML.parseLBS def (encodeUtf8 html) of
-        Left _ -> error "Failed to parse HTML"
-        Right d -> d
+  let docEither = Text.XML.parseLBS def (encodeUtf8 html)
+  case docEither of
+    Left _ -> return []
+    Right doc -> do
+      -- Create a cursor from the XML document.
+      let cursor = fromDocument doc
 
-  -- Create a cursor from the XML document.
-  let cursor = fromDocument doc
+      -- Find all article nodes by their class attribute.
+      let articleNodes = cursor $// Cursor.element "div" >=> Cursor.attributeIs "class" "content-block content-block--article"
 
-  -- Find all article nodes by their class attribute.
-  let articleNodes = cursor $// Cursor.element "div" >=> Cursor.attributeIs "class" "content-block content-block--article"
-
-  -- Extract articles from the nodes.
-  mapMaybe extractArticleFromNode articleNodes
+      -- Extract articles from the nodes.
+      return $ mapMaybe extractArticleFromNode articleNodes
   where
     extractArticleFromNode articleNode = do
       -- Find the URL node by its class attribute and get its href attribute.
@@ -54,8 +60,8 @@ extractArticlesRPS html = do
         _ -> Nothing
 
 -- | Parses an article from Rock Paper Shotgun's individual article page HTML text.
-parseRPSArticle :: Text -> Cursor -> Maybe Article
-parseRPSArticle url' cursor = do
+parseRPSArticle :: URL -> Cursor -> Maybe Article
+parseRPSArticle (URL url') cursor = do
   -- Find the title node in the HTML document and get its content.
   let titleNodes = cursor $// element "title" &/ Cursor.content
 
@@ -79,17 +85,17 @@ parseRPSArticle url' cursor = do
 
 -- | Fetches the content of an individual article page from Rock Paper Shotgun and
 -- parses it into an 'Article' object.
-
-fetchRPSArticleContent :: Text -> IO (Maybe Article)
-fetchRPSArticleContent url' = do
+fetchRPSArticleContent :: URL -> IO (Maybe Article)
+fetchRPSArticleContent (URL url') = do
   -- Parse the URL into a request.
-  request <- parseRequest (toString url')
-  
-  -- Send the HTTP request and get the response.
-  response <- httpLbs request
-  
-  -- Parse the response body into an XML document.
-  let cursor = fromDocument $ HTML_DOM.parseLBS (getResponseBody response)
-  
-  -- Parse the XML document into an 'Article' object.
-  return $ parseRPSArticle url' cursor
+  req <- parseRequest (toString url')
+
+  -- Send the HTTP request and get the response, handling potential HTTP exceptions.
+  resEither <- (try :: IO a -> IO (Either HttpException a)) $ httpLbs req
+
+  -- Depending on whether the HTTP request was successful or not, parse the response body into an XML document.
+  return $ either (const Nothing) parseResponseBody resEither
+  where
+    parseResponseBody response =
+      let cursor = fromDocument $ HTML_DOM.parseLBS (getResponseBody response)
+      in parseRPSArticle (URL url') cursor
