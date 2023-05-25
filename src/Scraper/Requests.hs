@@ -1,23 +1,33 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoImplicitPrelude #-}
 
-module Scraper.Requests
-    ( fetchPage
-    , fetchPageWithRetry
-    ) where
+module Scraper.Requests (
+  fetchPage,
+  fetchPageWithRetry,
+) where
 
+import Control.Exception (SomeException, try)
+import Control.Retry (exponentialBackoff, limitRetries, retrying)
 import Data.ByteString (ByteString)
 import Data.Text (Text)
 import Network.HTTP.Simple (getResponseBody, httpBS, parseRequest)
-import Control.Retry (retrying, exponentialBackoff, limitRetries)
-import Control.Exception (SomeException, try)
 import Relude
-    ( IO
-    , Either
-    , isLeft
-    , toString, return, ($), (<>), (.), 
-    )
+    ( ($),
+      Monad(return),
+      Semigroup((<>)),
+      Int,
+      IO,
+      Either,
+      isLeft,
+      (.),
+      ToString(toString) )
 
+-- Constants for retrying
+initialDelay :: Int
+initialDelay = 1000000 -- 1 second
+
+maxRetries :: Int
+maxRetries = 5
 
 {- | 'fetchPage' takes a URL as input and fetches the content of the web page.
  It returns the content as a ByteString.
@@ -35,5 +45,5 @@ fetchPage url = do
 fetchPageWithRetry :: Text -> IO (Either SomeException ByteString)
 fetchPageWithRetry url = retrying retryPolicy shouldRetry $ \_ -> try $ fetchPage url
   where
-    retryPolicy = exponentialBackoff 1000000 <> limitRetries 5 -- 1 second initial delay, 5 retries max
+    retryPolicy = exponentialBackoff initialDelay <> limitRetries maxRetries
     shouldRetry _ = return . isLeft
