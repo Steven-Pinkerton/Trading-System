@@ -1,12 +1,26 @@
 module Polling (startPolling) where
 
 import ArticleHandler (handleNewArticle)
-import Control.Concurrent (threadDelay)
-import Control.Concurrent.Async (forConcurrently_)
+import Control.Concurrent (forkIO, threadDelay, Chan, writeList2Chan)
+import Control.Concurrent.Chan (newChan, readChan, writeChan)
 import Control.Exception (catch)
-import Database.Database (getNewsSiteId, insertLinkIfNew, linkExists)
+import Database.Database (getNewsSiteId, insertLinkIfNew, runDB, EntityField (ArticleLink), Article (articleLink))
+import Database.Esqueleto.Legacy
+    ( (^.), from, in_, select, valList, where_, Entity(entityVal) )
 import Network.HTTP.Simple (HttpException, Response, getResponseBody, httpBS, parseRequest)
 import Text.HTML.TagSoup (fromAttrib, isTagOpenName, parseTags)
+import Data.List ( (\\) )
+
+-- Define your custom exception
+data RateLimitingException = RateLimited deriving stock (Show, Typeable)
+
+instance Exception RateLimitingException
+
+-- Define your custom data type
+data PollResult
+  = PollRateLimited
+  | Successful (Response ByteString)
+  deriving stock (Show)
 
 -- Define exception handler for network errors
 networkHandler :: HttpException -> IO (Maybe (Response ByteString))
@@ -19,37 +33,63 @@ anyExceptionHandler :: SomeException -> IO ()
 anyExceptionHandler e = putStrLn $ "An error occurred: " ++ show e
 
 startPolling :: [Text] -> [Text] -> IO ()
-startPolling sites urls = forConcurrently_ urls $ \url -> runInfinitely $ do
+startPolling sites urls = do
+  -- Create a new queue
+  queue <- newChan
+
+  -- Fill the queue with URLs
+  writeList2Chan queue urls
+
+  -- Start a fixed number of workers
+  replicateM_ 10 (forkIO (worker sites queue))
+
+pollUrl :: Text -> IO PollResult
+pollUrl url = do
   request <- parseRequest (toString url)
-  maybeResponse <- (Just <$> httpBS request) `catch` networkHandler
-  case maybeResponse of
-    Nothing -> putStrLn "Failed to get response."
-    Just response -> do
-      let tags = parseTags (getResponseBody response)
-          links =
-            [ toText . toString $ (decodeUtf8 @Text $ fromAttrib "href" tag)
-            | tag <- tags
-            , isTagOpenName "a" tag
-            ]
+  catch (Successful <$> httpBS request) (\e -> networkHandler e >> pure PollRateLimited)
 
-      -- Check in the database whether each link already exists and filter out those that do
-      newLinks <- filterM (fmap not . linkExists) links
+worker :: [Text] -> Chan Text -> IO ()
+worker sites queue = runInfinitely $ do
+  -- Take a URL from the queue
+  url <- readChan queue
 
-      -- Save new links in the database and run callback
-      forM_ newLinks $ \link -> do
-        let siteName = viaNonEmpty head sites -- Safe head operation
-        case siteName of
-          Nothing -> putStrLn "No site provided."
-          Just site -> do
-            siteId <- getNewsSiteId site
-            case siteId of
-              Nothing -> putStrLn $ "Site not found in the database: " ++ toString site
-              Just siteId' -> do
-                _ <- insertLinkIfNew link siteId'
-                handleNewArticle link
+  -- Poll the URL and handle rate limiting
+  result <- pollUrl url
+  case result of
+    PollRateLimited -> do
+      -- If rate limited, delay and put the URL back in the queue
+      threadDelay (60 * 60 * 1000000) -- 1 hour
+      writeChan queue url
+    Successful response -> handleResponse sites response
 
-  -- Wait for a while before polling the same site again
-  threadDelay (60 * 60 * 1000000) -- 1 hour
+handleResponse :: [Text] -> Response ByteString -> IO ()
+handleResponse sites response = do
+  let tags = parseTags (getResponseBody response)
+      links =
+        [ toText . toString $ (decodeUtf8 @Text $ fromAttrib "href" tag)
+        | tag <- tags
+        , isTagOpenName "a" tag
+        ]
+
+  -- Get non-existing links
+  newLinks <- runDB $ do
+    existingLinks <- select $ from $ \link -> do
+      where_ (link ^. ArticleLink `in_` valList links)
+      return link
+    return $ links \\ map (articleLink . entityVal) existingLinks
+
+  -- Save new links in the database and run callback
+  forM_ newLinks $ \link -> do
+    let siteName = viaNonEmpty Prelude.head sites -- Safe head operation
+    case siteName of
+      Nothing -> putStrLn "No site provided."
+      Just site -> do
+        siteId <- getNewsSiteId site
+        case siteId of
+          Nothing -> putStrLn $ "Site not found in the database: " ++ toString site
+          Just siteId' -> do
+            _ <- insertLinkIfNew link siteId'
+            handleNewArticle link
 
 -- Define a function that runs an action indefinitely, with our generic exception handler
 runInfinitely :: IO () -> IO ()
