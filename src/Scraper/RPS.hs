@@ -7,6 +7,7 @@ module Scraper.RPS (
   extractArticlesRPS,
   parseRPSArticle,
   fetchRPSArticleContent,
+  URL (..),
 ) where
 
 import Common (Article (..))

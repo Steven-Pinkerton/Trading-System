@@ -10,12 +10,12 @@ module ArticleHandler (
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
-import Data.Text (isInfixOf)
+import Data.Text (isInfixOf, pack)
 import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
-import Scraper.RPS (fetchRPSArticleContent, parseRPSArticle)
+import Scraper.RPS (URL (..), fetchRPSArticleContent, parseRPSArticle)
 import SentimentAnalysis.PythonScript (
   callPythonScript,
   parseSentimentOutput,
@@ -26,6 +26,9 @@ import TrendAnalysis.PythonScript (
   parseTrendingOutput,
  )
 import SentimentAnalysis.Sentiment ( sentimentToText )
+
+tshow :: Show a => a -> Text
+tshow = toText . (show :: Show a => a -> String)
 
 type WebsiteHandler = Text -> NewsSiteId -> IO ()
 
@@ -130,11 +133,21 @@ handleNewRPSArticle :: Text -> NewsSiteId -> IO ()
 handleNewRPSArticle url' siteId = do
   isNew <- insertLinkIfNew url' siteId
   when isNew $ do
-    result <- fetchRPSArticleContent url'
+    -- Create URL from Text
+    let urll = URL url'
+    -- Fetch the article content
+    result <- fetchRPSArticleContent urll
+    -- Handle the result
     case result of
-      Left error' -> logError $ "Error fetching the article content: " <> error'
-      Right content' -> do
-        let tags = parseTags content'
-        case parseRPSArticle url' tags of
-          Nothing -> logError "Error parsing the article."
-          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+      Left error' ->
+        -- If there was an error, log it
+        logError $ "Error fetching the article content: " <> tshow error'
+      Right cursor -> do
+        -- If the fetch was successful, parse the article
+        case parseRPSArticle urll cursor of
+          Nothing ->
+            -- If the article couldn't be parsed, log an error
+            logError "Error parsing the article."
+          Just article -> do
+            -- If the article was parsed successfully, analyze it
+            analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
