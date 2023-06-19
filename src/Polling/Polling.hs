@@ -1,4 +1,4 @@
-module Polling (startPolling) where
+module Polling.Polling (startPolling) where
 
 import ArticleHandler (handleNewArticle)
 import Control.Concurrent (forkIO, threadDelay, Chan, writeList2Chan)

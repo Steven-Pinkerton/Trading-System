@@ -1,10 +1,10 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use 'forever' from Relude" #-}
 module Main where
 
--- assuming migrateAll is an available function
--- assuming pollSites is a function that polls the websites
-import ArticleHandler (handleNewArticle)
+import Control.Concurrent (threadDelay)
 import Database.Database (migrateAll, runDB)
-import Polling.Polling (pollSites)
+import Polling.Polling (startPolling)
 
 main :: IO ()
 main = do
@@ -14,12 +14,18 @@ main = do
   putStrLn "Initializing database..."
   runDB migrateAll
 
-  -- Poll your sites for new articles
-  putStrLn "Polling sites for new articles..."
-  newArticles <- pollSites -- pollSites would be a function that returns a list of new article URLs
+  -- Define your sites and urls
+  let sites = ["site1", "site2", "site3"]
+  let urls = ["url1", "url2", "url3"]
 
-  -- Handle the new articles
-  putStrLn "Processing new articles..."
-  mapM_ handleNewArticle newArticles
+  forever $ do
+    -- Start polling for new articles
+    putStrLn "Polling sites for new articles..."
+    startPolling sites urls
 
+    -- Wait for a certain amount of time before polling again. The argument is in microseconds.
+    -- For example, to wait for an hour you would use:
+    -- threadDelay (60 * 60 * 1000000)
+
+    threadDelay (60 * 60 * 1000000) -- adjust the delay as needed
   putStrLn "All done!"

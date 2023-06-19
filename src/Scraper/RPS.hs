@@ -11,7 +11,6 @@ module Scraper.RPS (
 
 import Common (Article (..))
 import Control.Exception (try)
-import Data.ByteString.Lazy qualified as LBS
 import Network.HTTP.Client (HttpException, defaultManagerSettings, httpLbs, newManager, parseRequest, responseBody)
 import Text.HTML.DOM qualified as HTML
 import Text.XML (def)
@@ -19,11 +18,11 @@ import Text.XML qualified as XML
 import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
 import Text.XML.Cursor qualified as Cursor
 
-data URL = URL Text deriving (Show)
+data URL = URL Text deriving stock (Show)
 
 -- Helper function to extract URL Text
 getUrl :: URL -> Text
-getUrl (URL url) = url
+getUrl (URL url') = url'
 
 -- | Extracts articles from Rock Paper Shotgun's index page HTML text.
 extractArticlesRPS :: Text -> IO [Article]
@@ -87,21 +86,18 @@ parseRPSArticle (URL url') cursor = do
 {- | Fetches the content of an individual article page from Rock Paper Shotgun and
  parses it into an 'Article' object.
 -}
-fetchRPSArticleContent :: URL -> IO (Either HttpException (Maybe Article))
+-- Fetches the content of an individual article page from Rock Paper Shotgun and
+-- returns it as a 'Cursor' object.
+fetchRPSArticleContent :: URL -> IO (Either HttpException Cursor)
 fetchRPSArticleContent url' = do
   -- Parse the URL into a request.
   req <- parseRequest (toString (getUrl url'))
 
-  -- Create a manager for HTTP requests
+  -- Create a manager for HTTP requests.
   manager <- newManager defaultManagerSettings
 
   -- Send the HTTP request and get the response, handling potential HTTP exceptions.
   resEither <- (try :: IO a -> IO (Either HttpException a)) $ httpLbs req manager
 
   -- Depending on whether the HTTP request was successful or not, parse the response body into an XML document.
-  return $ fmap (parseResponseBody . responseBody) resEither
-  where
-    parseResponseBody :: LBS.ByteString -> Maybe Article
-    parseResponseBody response =
-      let cursor = fromDocument $ HTML.parseLBS response
-       in parseRPSArticle url' cursor
+  return $ fmap (Cursor.fromDocument . HTML.parseLBS . responseBody) resEither
