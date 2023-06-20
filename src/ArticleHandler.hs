@@ -5,13 +5,13 @@
 
 module ArticleHandler (
   handleNewArticle,
-) where
+WebsiteHandler) where
 
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
-import Data.Text (isInfixOf, pack)
-import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId)
+import Data.Text (isInfixOf)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
@@ -26,10 +26,11 @@ import TrendAnalysis.PythonScript (
   parseTrendingOutput,
  )
 import SentimentAnalysis.Sentiment ( sentimentToText )
-import Scraper.PCGamer ( URL(URL), parsePCGArticle, fetchPCGArticleContent )
+import Scraper.PCGamer ( parsePCGArticle, fetchPCGArticleContent )
 import Scraper.VentureBeat
-    ( URL(URL), parseVBArticle, fetchVBArticleContent )
+    ( parseVBArticle, fetchVBArticleContent )
 import Scraper.EuroGamer
+    ( parseEuroGamerArticle, fetchEuroGamerArticleContent )
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -95,7 +96,7 @@ newsSiteIdFromUrl url'
   | "rockpapershotgun" `isInfixOf` url' = Just <$> rpsId
   | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId -- Add this line
   | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId -- Add this line
-  | "eurogamer" `isInfixOf` url' = Just <$> eurogamerId
+  | "eurogamer" `isInfixOf` url' = Just <$> euroGamerId
   | otherwise = return Nothing
 
   
