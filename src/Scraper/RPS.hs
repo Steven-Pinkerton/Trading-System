@@ -89,6 +89,7 @@ parseRPSArticle (URL url') cursor = do
 -}
 -- Fetches the content of an individual article page from Rock Paper Shotgun and
 -- returns it as a 'Cursor' object.
+
 fetchRPSArticleContent :: URL -> IO (Either HttpException Cursor)
 fetchRPSArticleContent url' = do
   -- Parse the URL into a request.
