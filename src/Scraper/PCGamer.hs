@@ -6,14 +6,21 @@
 module Scraper.PCGamer (
   URL (..),
 extractArticlesPCG,
-parsePCGArticle) where
+parsePCGArticle,
+fetchPCGArticleContent) where
 
 import Common (Article (..))
 import Scraper.RPS (URL (URL))
-import Text.XML (def)
+import Text.XML (def, parseLBS)
 import Text.XML qualified as XML
 import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
 import Text.XML.Cursor qualified as Cursor
+import Data.ByteString ( unpack )
+import Network.HTTP.Conduit ( simpleHttp )
+import Control.Exception ( try )
+import Data.ByteString.Lazy qualified as BL
+import Data.Text.Encoding (decodeUtf8)
+import Network.HTTP.Conduit (simpleHttp)
 
 -- | Extracts articles from PCGamer's index page HTML text.
 extractArticlesPCG :: Text -> IO [Article]
@@ -53,3 +60,13 @@ parsePCGArticle (URL url') cursor = do
   case titleText of
     Just title' -> Just $ Article title' url' contentText
     _ -> Nothing
+
+-- Fetch the HTML content of an article given its URL
+fetchPCGArticleContent :: URL -> IO (Either Text Cursor)
+fetchPCGArticleContent (URL url') = do
+  response <- try $ simpleHttp (toString url') :: IO (Either SomeException BL.ByteString)
+  return $ case response of
+    Left _ -> Left "Error fetching the URL"
+    Right html -> case parseLBS def html of
+      Left _ -> Left "Error parsing HTML"
+      Right doc -> Right $ fromDocument doc

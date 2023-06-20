@@ -26,19 +26,22 @@ import TrendAnalysis.PythonScript (
   parseTrendingOutput,
  )
 import SentimentAnalysis.Sentiment ( sentimentToText )
+import Scraper.PCGamer ( URL(URL), parsePCGArticle, fetchPCGArticleContent )
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
 
 type WebsiteHandler = Text -> NewsSiteId -> IO ()
 
-websiteHandlers :: Map.Map Text WebsiteHandler
+websiteHandlers :: Map Text (Text -> NewsSiteId -> IO ())
 websiteHandlers =
   Map.fromList
     [ ("gamesindustry", handleNewGamesIndustryArticle)
     , ("gamasutra", handleNewGamasutraArticle)
     , ("polygon", handleNewPolygonArticle)
-    , ("rockpapershotgun", handleNewRPSArticle) -- Add this line
+    , ("rockpapershotgun", handleNewRPSArticle)
+    , ("pcgamer", handleNewPCGArticle) -- Add this line
+    , ("venturebeat", handleNewVBArticle) -- Add this line
     ]
 
 -- This function processes a new article from GamesIndustry.
@@ -110,8 +113,10 @@ siteNameFromUrl url'
   | "gamesindustry" `isInfixOf` url' = "gamesindustry"
   | "gamasutra" `isInfixOf` url' = "gamasutra"
   | "polygon" `isInfixOf` url' = "polygon"
-  | "rockpapershotgun" `isInfixOf` url' = "rockpapershotgun" -- Add this line
-  | otherwise = "unknown"
+  | "rockpapershotgun" `isInfixOf` url' = "rockpapershotgun"
+  | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId
+  | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId
+  | otherwise = return Nothing
 
 -- This function processes a new article from Polygon.
 handleNewPolygonArticle :: Text -> NewsSiteId -> IO ()
@@ -151,3 +156,29 @@ handleNewRPSArticle url' siteId = do
           Just article -> do
             -- If the article was parsed successfully, analyze it
             analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+-- This function processes a new article from PCGamer.
+handleNewPCGArticle :: Text -> NewsSiteId -> IO ()
+handleNewPCGArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    result <- fetchPCGArticleContent (URL url')
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right cursor -> do
+        case parsePCGArticle (URL url') cursor of
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+-- This function processes a new article from VentureBeat.
+handleNewVBArticle :: Text -> NewsSiteId -> IO ()
+handleNewVBArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    result <- fetchVBArticleContent (URL url')
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right cursor -> do
+        case parseVBArticle (URL url') cursor of
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
