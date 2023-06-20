@@ -15,12 +15,9 @@ import Text.XML (def, parseLBS)
 import Text.XML qualified as XML
 import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
 import Text.XML.Cursor qualified as Cursor
-import Data.ByteString ( unpack )
 import Network.HTTP.Conduit ( simpleHttp )
 import Control.Exception ( try )
 import Data.ByteString.Lazy qualified as BL
-import Data.Text.Encoding (decodeUtf8)
-import Network.HTTP.Conduit (simpleHttp)
 
 -- | Extracts articles from PCGamer's index page HTML text.
 extractArticlesPCG :: Text -> IO [Article]
