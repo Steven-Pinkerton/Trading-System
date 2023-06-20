@@ -128,6 +128,12 @@ euroGamerId = do
     Just id' -> return id'
     Nothing -> error "Unable to find eurogamer in the NewsSite table."
 
+gameSpotId :: IO NewsSiteId
+gameSpotId = do
+  mId <- getNewsSiteIdWithRetry "gamespot"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find gamespot in the NewsSite table."
 
 linkExists :: Text -> IO Bool
 linkExists link = runDB $ do

@@ -5,13 +5,14 @@
 
 module ArticleHandler (
   handleNewArticle,
-WebsiteHandler) where
+WebsiteHandler,
+handleNewGameSpotArticle) where
 
 import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
 import Data.Text (isInfixOf)
-import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId, gameSpotId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
@@ -31,6 +32,8 @@ import Scraper.VentureBeat
     ( parseVBArticle, fetchVBArticleContent )
 import Scraper.EuroGamer
     ( parseEuroGamerArticle, fetchEuroGamerArticleContent )
+import Scraper.GameSpot
+    ( parseGameSpotArticle, fetchGameSpotArticleContent )
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -44,9 +47,10 @@ websiteHandlers =
     , ("gamasutra", handleNewGamasutraArticle)
     , ("polygon", handleNewPolygonArticle)
     , ("rockpapershotgun", handleNewRPSArticle)
-    , ("pcgamer", handleNewPCGArticle) -- Add this line
-    , ("venturebeat", handleNewVBArticle) -- Add this line
+    , ("pcgamer", handleNewPCGArticle)
+    , ("venturebeat", handleNewVBArticle)
     , ("eurogamer", handleNewEuroGamerArticle)
+    , ("gamespot", handleNewGameSpotArticle) -- Add GameSpot here
     ]
 
 -- This function processes a new article from GamesIndustry.
@@ -94,11 +98,11 @@ newsSiteIdFromUrl url'
   | "gamasutra" `isInfixOf` url' = Just <$> gamesutraId
   | "polygon" `isInfixOf` url' = Just <$> polygonId
   | "rockpapershotgun" `isInfixOf` url' = Just <$> rpsId
-  | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId -- Add this line
-  | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId -- Add this line
+  | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId
+  | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId
   | "eurogamer" `isInfixOf` url' = Just <$> euroGamerId
+  | "gamespot" `isInfixOf` url' = Just <$> gameSpotId -- Add GameSpot here
   | otherwise = return Nothing
-
   
 -- This function logs an error message.
 logError :: Text -> IO ()
@@ -116,7 +120,6 @@ analyzeSentimentAndTrends url' preprocessedContent = do
     print trendingTopics
 
 
--- Note: This function should be implemented to extract the website name from a URL.
 -- This function extracts the website name from a URL.
 siteNameFromUrl :: Text -> Text
 siteNameFromUrl url'
@@ -127,8 +130,8 @@ siteNameFromUrl url'
   | "pcgamer" `isInfixOf` url' = "pcgamer"
   | "venturebeat" `isInfixOf` url' = "venturebeat"
   | "eurogamer" `isInfixOf` url' = "eurogamer"
+  | "gamespot" `isInfixOf` url' = "gamespot" -- Add GameSpot here
   | otherwise = "unknown"
-
 
 -- This function processes a new article from Polygon.
 handleNewPolygonArticle :: Text -> NewsSiteId -> IO ()
@@ -205,5 +208,21 @@ handleNewEuroGamerArticle url' siteId = do
       Left error' -> logError $ "Error fetching the article content: " <> error'
       Right cursor -> do
         case parseEuroGamerArticle (URL url') cursor of
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+
+  
+handleNewGameSpotArticle :: Text -> NewsSiteId -> IO ()
+handleNewGameSpotArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    let urll = URL url' -- Convert Text to URL
+    result <- fetchGameSpotArticleContent urll
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right cursor -> do
+        -- Assume fetchGameSpotArticleContent returns Cursor, not Text
+        case parseGameSpotArticle urll cursor of -- Pass Cursor, not tags
           Nothing -> logError "Error parsing the article."
           Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
