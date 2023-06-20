@@ -107,6 +107,20 @@ polygonId = do
     Just id' -> return id'
     Nothing -> error "Unable to find polygon in the NewsSite table."
 
+pcgamerId :: IO NewsSiteId
+pcgamerId = do
+  mId <- getNewsSiteIdWithRetry "pcgamer"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find pcgamer in the NewsSite table."
+
+venturebeatId :: IO NewsSiteId
+venturebeatId = do
+  mId <- getNewsSiteIdWithRetry "venturebeat"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find venturebeat in the NewsSite table."
+
 linkExists :: Text -> IO Bool
 linkExists link = runDB $ do
   mArticle <- getBy $ UniqueLink link

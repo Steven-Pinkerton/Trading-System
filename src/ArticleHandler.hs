@@ -27,6 +27,8 @@ import TrendAnalysis.PythonScript (
  )
 import SentimentAnalysis.Sentiment ( sentimentToText )
 import Scraper.PCGamer ( URL(URL), parsePCGArticle, fetchPCGArticleContent )
+import Scraper.VentureBeat
+    ( URL(URL), parseVBArticle, fetchVBArticleContent )
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -88,9 +90,12 @@ newsSiteIdFromUrl url'
   | "gamesindustry" `isInfixOf` url' = Just <$> gamesIndustryId
   | "gamasutra" `isInfixOf` url' = Just <$> gamesutraId
   | "polygon" `isInfixOf` url' = Just <$> polygonId
-  | "rockpapershotgun" `isInfixOf` url' = Just <$> rpsId -- Add this line
+  | "rockpapershotgun" `isInfixOf` url' = Just <$> rpsId
+  | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId -- Add this line
+  | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId -- Add this line
   | otherwise = return Nothing
 
+  
 -- This function logs an error message.
 logError :: Text -> IO ()
 logError = putStrLn . toString -- Assuming unpack is imported from Data.Text
@@ -108,15 +113,17 @@ analyzeSentimentAndTrends url' preprocessedContent = do
 
 
 -- Note: This function should be implemented to extract the website name from a URL.
+-- This function extracts the website name from a URL.
 siteNameFromUrl :: Text -> Text
 siteNameFromUrl url'
   | "gamesindustry" `isInfixOf` url' = "gamesindustry"
   | "gamasutra" `isInfixOf` url' = "gamasutra"
   | "polygon" `isInfixOf` url' = "polygon"
   | "rockpapershotgun" `isInfixOf` url' = "rockpapershotgun"
-  | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId
-  | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId
-  | otherwise = return Nothing
+  | "pcgamer" `isInfixOf` url' = "pcgamer"
+  | "venturebeat" `isInfixOf` url' = "venturebeat"
+  | otherwise = "unknown"
+
 
 -- This function processes a new article from Polygon.
 handleNewPolygonArticle :: Text -> NewsSiteId -> IO ()
