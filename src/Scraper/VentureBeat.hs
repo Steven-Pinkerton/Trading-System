@@ -20,9 +20,6 @@ import Text.XML qualified as XML
 import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
 import Text.XML.Cursor qualified as Cursor
 
--- Helper function to extract URL Text
-getUrl :: URL -> Text
-getUrl (URL url') = url'
 
 -- | Extracts articles from VentureBeat's index page HTML text.
 extractArticlesVB :: Text -> IO [Article]
