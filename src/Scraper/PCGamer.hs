@@ -5,21 +5,15 @@
 
 module Scraper.PCGamer (
   URL (..),
-) where
+extractArticlesPCG,
+parsePCGArticle) where
 
 import Common (Article (..))
-import Control.Monad ((>=>))
-import Data.Maybe (listToMaybe, mapMaybe)
-import Data.Text.Encoding (encodeUtf8)
 import Scraper.RPS (URL (URL))
 import Text.XML (def)
 import Text.XML qualified as XML
 import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
 import Text.XML.Cursor qualified as Cursor
-
--- Helper function to extract URL Text
-getUrl :: URL -> Text
-getUrl (URL url') = url'
 
 -- | Extracts articles from PCGamer's index page HTML text.
 extractArticlesPCG :: Text -> IO [Article]
