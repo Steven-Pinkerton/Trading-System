@@ -11,7 +11,7 @@ import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
 import Data.Text (isInfixOf, pack)
-import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
@@ -29,6 +29,7 @@ import SentimentAnalysis.Sentiment ( sentimentToText )
 import Scraper.PCGamer ( URL(URL), parsePCGArticle, fetchPCGArticleContent )
 import Scraper.VentureBeat
     ( URL(URL), parseVBArticle, fetchVBArticleContent )
+import Scraper.EuroGamer
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -44,6 +45,7 @@ websiteHandlers =
     , ("rockpapershotgun", handleNewRPSArticle)
     , ("pcgamer", handleNewPCGArticle) -- Add this line
     , ("venturebeat", handleNewVBArticle) -- Add this line
+    , ("eurogamer", handleNewEuroGamerArticle)
     ]
 
 -- This function processes a new article from GamesIndustry.
@@ -93,6 +95,7 @@ newsSiteIdFromUrl url'
   | "rockpapershotgun" `isInfixOf` url' = Just <$> rpsId
   | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId -- Add this line
   | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId -- Add this line
+  | "eurogamer" `isInfixOf` url' = Just <$> eurogamerId
   | otherwise = return Nothing
 
   
@@ -122,6 +125,7 @@ siteNameFromUrl url'
   | "rockpapershotgun" `isInfixOf` url' = "rockpapershotgun"
   | "pcgamer" `isInfixOf` url' = "pcgamer"
   | "venturebeat" `isInfixOf` url' = "venturebeat"
+  | "eurogamer" `isInfixOf` url' = "eurogamer"
   | otherwise = "unknown"
 
 
@@ -187,5 +191,18 @@ handleNewVBArticle url' siteId = do
       Left error' -> logError $ "Error fetching the article content: " <> error'
       Right cursor -> do
         case parseVBArticle (URL url') cursor of
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+-- This function processes a new article from EuroGamer.
+handleNewEuroGamerArticle :: Text -> NewsSiteId -> IO ()
+handleNewEuroGamerArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    result <- fetchEuroGamerArticleContent (URL url')
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right cursor -> do
+        case parseEuroGamerArticle (URL url') cursor of
           Nothing -> logError "Error parsing the article."
           Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))

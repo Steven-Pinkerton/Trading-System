@@ -121,6 +121,14 @@ venturebeatId = do
     Just id' -> return id'
     Nothing -> error "Unable to find venturebeat in the NewsSite table."
 
+euroGamerId :: IO NewsSiteId
+euroGamerId = do
+  mId <- getNewsSiteIdWithRetry "eurogamer"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find eurogamer in the NewsSite table."
+
+
 linkExists :: Text -> IO Bool
 linkExists link = runDB $ do
   mArticle <- getBy $ UniqueLink link
