@@ -12,7 +12,7 @@ import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
 import Data.Text (isInfixOf)
-import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId, gameSpotId, ignId)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId, gameSpotId, ignId, kotakuId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
@@ -36,6 +36,7 @@ import Scraper.GameSpot
     ( parseGameSpotArticle, fetchGameSpotArticleContent )
 import Scraper.Ign
     ( parseIGNArticle, fetchIGNArticleContent )
+import Scraper.Kotaku
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -53,7 +54,8 @@ websiteHandlers =
     , ("venturebeat", handleNewVBArticle)
     , ("eurogamer", handleNewEuroGamerArticle)
     , ("gamespot", handleNewGameSpotArticle)
-    , ("ign", handleNewIGNArticle) -- Add IGN here
+    , ("ign", handleNewIGNArticle)
+    , ("kotaku", handleNewKotakuArticle) -- Add Kotaku here
     ]
 
 -- This function processes a new article from GamesIndustry.
@@ -105,7 +107,8 @@ newsSiteIdFromUrl url'
   | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId
   | "eurogamer" `isInfixOf` url' = Just <$> euroGamerId
   | "gamespot" `isInfixOf` url' = Just <$> gameSpotId
-  | "ign" `isInfixOf` url' = Just <$> ignId -- Add IGN here
+  | "ign" `isInfixOf` url' = Just <$> ignId
+  | "kotaku" `isInfixOf` url' = Just <$> kotakuId -- Add Kotaku here
   | otherwise = return Nothing
   
 -- This function logs an error message.
@@ -135,7 +138,8 @@ siteNameFromUrl url'
   | "venturebeat" `isInfixOf` url' = "venturebeat"
   | "eurogamer" `isInfixOf` url' = "eurogamer"
   | "gamespot" `isInfixOf` url' = "gamespot"
-  | "ign" `isInfixOf` url' = "ign" -- Add IGN here
+  | "ign" `isInfixOf` url' = "ign"
+  | "kotaku" `isInfixOf` url' = "kotaku" -- Add Kotaku here
   | otherwise = "unknown"
 
 -- This function processes a new article from Polygon.
@@ -243,5 +247,18 @@ handleNewIGNArticle url' siteId = do
       Left error' -> logError $ "Error fetching the article content: " <> error'
       Right cursor -> do
         case parseIGNArticle urll cursor of
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+-- This function processes a new article from Kotaku.
+handleNewKotakuArticle :: Text -> NewsSiteId -> IO ()
+handleNewKotakuArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    result <- fetchKotakuArticleContent (URL url')
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right cursor -> do
+        case parseKotakuArticle (URL url') cursor of
           Nothing -> logError "Error parsing the article."
           Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))

@@ -142,6 +142,14 @@ ignId = do
     Just id' -> return id'
     Nothing -> error "Unable to find ign in the NewsSite table."
 
+
+kotakuId :: IO NewsSiteId
+kotakuId = do
+  mId <- getNewsSiteIdWithRetry "kotaku"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find kotaku in the NewsSite table."
+
 linkExists :: Text -> IO Bool
 linkExists link = runDB $ do
   mArticle <- getBy $ UniqueLink link
