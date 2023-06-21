@@ -135,6 +135,13 @@ gameSpotId = do
     Just id' -> return id'
     Nothing -> error "Unable to find gamespot in the NewsSite table."
 
+ignId :: IO NewsSiteId
+ignId = do
+  mId <- getNewsSiteIdWithRetry "ign"
+  case mId of
+    Just id' -> return id'
+    Nothing -> error "Unable to find ign in the NewsSite table."
+
 linkExists :: Text -> IO Bool
 linkExists link = runDB $ do
   mArticle <- getBy $ UniqueLink link

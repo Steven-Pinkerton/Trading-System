@@ -12,7 +12,7 @@ import ArticleExtraction.Preprocessing (preprocess)
 import Common (Article (..))
 import Data.Map qualified as Map
 import Data.Text (isInfixOf)
-import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId, gameSpotId)
+import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIfNew, polygonId, rpsId, venturebeatId, pcgamerId, euroGamerId, gameSpotId, ignId)
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
@@ -34,6 +34,8 @@ import Scraper.EuroGamer
     ( parseEuroGamerArticle, fetchEuroGamerArticleContent )
 import Scraper.GameSpot
     ( parseGameSpotArticle, fetchGameSpotArticleContent )
+import Scraper.Ign
+    ( parseIGNArticle, fetchIGNArticleContent )
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -50,7 +52,8 @@ websiteHandlers =
     , ("pcgamer", handleNewPCGArticle)
     , ("venturebeat", handleNewVBArticle)
     , ("eurogamer", handleNewEuroGamerArticle)
-    , ("gamespot", handleNewGameSpotArticle) -- Add GameSpot here
+    , ("gamespot", handleNewGameSpotArticle)
+    , ("ign", handleNewIGNArticle) -- Add IGN here
     ]
 
 -- This function processes a new article from GamesIndustry.
@@ -101,7 +104,8 @@ newsSiteIdFromUrl url'
   | "pcgamer" `isInfixOf` url' = Just <$> pcgamerId
   | "venturebeat" `isInfixOf` url' = Just <$> venturebeatId
   | "eurogamer" `isInfixOf` url' = Just <$> euroGamerId
-  | "gamespot" `isInfixOf` url' = Just <$> gameSpotId -- Add GameSpot here
+  | "gamespot" `isInfixOf` url' = Just <$> gameSpotId
+  | "ign" `isInfixOf` url' = Just <$> ignId -- Add IGN here
   | otherwise = return Nothing
   
 -- This function logs an error message.
@@ -130,7 +134,8 @@ siteNameFromUrl url'
   | "pcgamer" `isInfixOf` url' = "pcgamer"
   | "venturebeat" `isInfixOf` url' = "venturebeat"
   | "eurogamer" `isInfixOf` url' = "eurogamer"
-  | "gamespot" `isInfixOf` url' = "gamespot" -- Add GameSpot here
+  | "gamespot" `isInfixOf` url' = "gamespot"
+  | "ign" `isInfixOf` url' = "ign" -- Add IGN here
   | otherwise = "unknown"
 
 -- This function processes a new article from Polygon.
@@ -224,5 +229,19 @@ handleNewGameSpotArticle url' siteId = do
       Right cursor -> do
         -- Assume fetchGameSpotArticleContent returns Cursor, not Text
         case parseGameSpotArticle urll cursor of -- Pass Cursor, not tags
+          Nothing -> logError "Error parsing the article."
+          Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
+
+
+handleNewIGNArticle :: Text -> NewsSiteId -> IO ()
+handleNewIGNArticle url' siteId = do
+  isNew <- insertLinkIfNew url' siteId
+  when isNew $ do
+    let urll = URL url' -- Convert Text to URL
+    result <- fetchIGNArticleContent urll
+    case result of
+      Left error' -> logError $ "Error fetching the article content: " <> error'
+      Right cursor -> do
+        case parseIGNArticle urll cursor of
           Nothing -> logError "Error parsing the article."
           Just article -> analyzeSentimentAndTrends url' (unwords $ preprocess (content article))
