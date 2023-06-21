@@ -16,7 +16,7 @@ import Database.Database (NewsSiteId, gamesIndustryId, gamesutraId, insertLinkIf
 import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndustryArticle)
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
-import Scraper.RPS (URL (..), fetchRPSArticleContent, parseRPSArticle)
+import Scraper.RPS (fetchRPSArticleContent, parseRPSArticle)
 import SentimentAnalysis.PythonScript (
   callPythonScript,
   parseSentimentOutput,

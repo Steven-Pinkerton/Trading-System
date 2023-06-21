@@ -12,7 +12,7 @@ main = do
 
   -- Initialize and migrate your database
   putStrLn "Initializing database..."
-  runDB migrateAll
+  runDB undefined
 
   -- Define your sites and urls
   let sites = ["site1", "site2", "site3"]

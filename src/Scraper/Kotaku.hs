@@ -18,7 +18,7 @@ import Network.HTTP.Conduit (simpleHttp)
 import Scraper.RPS (URL (URL))
 import Text.XML (def, parseLBS)
 import Text.XML qualified as XML
-import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/), (&//))
+import Text.XML.Cursor (Cursor, element, fromDocument, ($//), (&/))
 import Text.XML.Cursor qualified as Cursor
 
 -- | Extracts articles from Kotaku's index page HTML text.
