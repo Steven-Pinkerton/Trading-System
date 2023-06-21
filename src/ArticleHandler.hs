@@ -17,10 +17,7 @@ import Scraper.GamesIndustry (fetchGamesIndustryArticleContent, parseGamesIndust
 import Scraper.GamesSutra (fetchGamasutraArticleContent)
 import Scraper.Polygon (extractPolygonArticles, fetchPolygonArticleContent)
 import Scraper.RPS (fetchRPSArticleContent, parseRPSArticle)
-import SentimentAnalysis.PythonScript (
-  callPythonScript,
-  parseSentimentOutput,
- )
+import SentimentAnalysis.Classifier (classifySentiment)
 import Text.HTML.TagSoup (parseTags)
 import TrendAnalysis.PythonScript (
   callPythonTrendScript,
@@ -37,6 +34,8 @@ import Scraper.GameSpot
 import Scraper.Ign
     ( parseIGNArticle, fetchIGNArticleContent )
 import Scraper.Kotaku
+    ( URL(URL), parseKotakuArticle, fetchKotakuArticleContent )
+
 
 tshow :: Show a => a -> Text
 tshow = toText . (show :: Show a => a -> String)
@@ -118,14 +117,12 @@ logError = putStrLn . toString -- Assuming unpack is imported from Data.Text
 -- This function runs sentiment analysis and trend analysis on the preprocessed content of an article.
 analyzeSentimentAndTrends :: Text -> Text -> IO ()
 analyzeSentimentAndTrends url' preprocessedContent = do
-  rawSentimentOutput <- callPythonScript preprocessedContent
-  let sentiment = parseSentimentOutput rawSentimentOutput
+  sentiment <- classifySentiment preprocessedContent
   print sentiment
   when (sentimentToText sentiment == "negative") $ do
     rawTrendingOutput <- callPythonTrendScript url' preprocessedContent (show sentiment) -- Using show to convert Sentiment to String
     let trendingTopics = parseTrendingOutput rawTrendingOutput
     print trendingTopics
-
 
 -- This function extracts the website name from a URL.
 siteNameFromUrl :: Text -> Text
