@@ -4,7 +4,7 @@ module SentimentAnalysis.Classifier (
 
 import SentimentAnalysis.Sentiment (Sentiment(..))
 import System.Process ( readProcess )
-import Data.Text
+import Data.Text ( strip )
 
 
 -- | 'classifySentiment' function takes a preprocessed text and returns the sentiment.
