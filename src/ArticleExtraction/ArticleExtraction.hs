@@ -2,7 +2,6 @@ module ArticleExtraction (
   Article (..),
   extractAndPreprocess,
   preprocessArticle,
-  scrapeArticles,
 ) where
 
 import ArticleExtraction.Preprocessing (preprocess)
@@ -35,8 +34,8 @@ extractAndPreprocess url' = do
         Just httpErr -> return $ Left httpErr
         Nothing -> return $ Left (toHttpException someErr)
     Right content' -> do
-      let articles = extractArticlesForSite (toText url') content'
-          preprocessedArticles = map preprocessArticle articles
+      articles <- extractArticlesForSite (toText url') content'
+      let preprocessedArticles = fmap preprocessArticle articles
       return $ Right preprocessedArticles
 
 toHttpException :: SomeException -> HttpException
@@ -66,18 +65,10 @@ identifySite urlText =
     then GamesIndustryBiz
     else OtherSite
 
-extractArticlesForSite :: Text -> ByteString -> [Article]
+extractArticlesForSite :: Text -> ByteString -> IO [Article]
 extractArticlesForSite siteUrl html =
   let decodedHtml = decodeUtf8 html
    in case identifySite siteUrl of
-        GamesIndustryBiz -> extractArticlesGamesIndustry decodedHtml
-        OtherSite -> extractArticles html
-
-scrapeArticles :: Text -> IO [Article]
-scrapeArticles urlText = do
-  result <- fetchPageWithRetry urlText
-  case result of
-    Left _ -> return [] -- You can decide how to handle the error case here
-    Right html -> do
-      let articles = extractArticlesForSite urlText html
-      return articles
+        GamesIndustryBiz ->
+          whenRight [] (extractArticlesGamesIndustry decodedHtml) return
+        OtherSite -> return $ extractArticles html
